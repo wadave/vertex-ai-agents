@@ -1,5 +1,5 @@
 def main():
-    print("Hello from vertex-ai-agents!")
+    print("Hello from a2a-mcp-app!")
 
 
 if __name__ == "__main__":
