@@ -1,5 +1,5 @@
 [project]
-name = "adk-web-ui"
+name = "adk-web-mcp-remote"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
