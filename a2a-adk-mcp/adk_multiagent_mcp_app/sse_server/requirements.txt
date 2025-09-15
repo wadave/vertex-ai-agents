@@ -1,4 +1,0 @@
-httpx[http2]
-geopy
-mcp[cli]
-uvicorn[standard]
