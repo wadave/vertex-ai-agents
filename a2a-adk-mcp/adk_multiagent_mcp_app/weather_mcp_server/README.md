@@ -38,7 +38,16 @@ gcloud run deploy $SERVICE_NAME \
 gcloud run services proxy $SERVICE_NAME --region=us-central1
 ```
 
+## Add Compute User Permission
 gcloud run services add-iam-policy-binding $SERVICE_NAME \
-    --member="serviceAccount:496235138247-compute@developer.gserviceaccount.com" \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+    --role="roles/run.invoker" \
+    --region="us-central1"
+
+
+
+## Add Cloudtop User Permission
+gcloud run services add-iam-policy-binding $SERVICE_NAME \
+    --member="serviceAccount:insecure-cloudtop-shared-user@cloudtop-prod-us-west.iam.gserviceaccount.com" \
     --role="roles/run.invoker" \
     --region="us-central1"
