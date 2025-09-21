@@ -16,9 +16,9 @@ export SERVICE_NAME='weather-remote-mcp-server'
 export LOCATION='us-central1'
 
 # Replace with your Google Cloud Project ID
-export PROJECT_ID='dw-genai-dev'
+export PROJECT_ID=''
 
-export PROJECT_NUMBER='496235138247'
+export PROJECT_NUMBER=''
 ```
 
 In Cloud Shell, execute the following command:
@@ -46,15 +46,9 @@ gcloud run services add-iam-policy-binding $SERVICE_NAME \
 
 
 
-## Add Cloudtop User Permission
+## Add Cloudtop User Permission (Optional, only if you want to use Cloudtop)
 gcloud run services add-iam-policy-binding $SERVICE_NAME \
     --member="serviceAccount:insecure-cloudtop-shared-user@cloudtop-prod-us-west.iam.gserviceaccount.com" \
     --role="roles/run.invoker" \
     --region="us-central1"
 
-
-
-gcloud run services add-iam-policy-binding $SERVICE_NAME \
-    --member="serviceAccount:service-496235138247@gcp-sa-aiplatform-re.iam.gserviceaccount.com" \
-    --role="roles/run.invoker" \
-    --region="us-central1"
