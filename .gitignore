@@ -313,4 +313,5 @@ token.json
 .pre-commit-config.yaml
 .env
 
-a2a-adk-mcp/
+a2a-adk-mcp2/
+adk-remote-mcp2/
