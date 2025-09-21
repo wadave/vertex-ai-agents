@@ -16,7 +16,7 @@ This document describes a web application demonstrating the integration of Googl
 
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
-![architecture](asset/a2a_ae_demo.png)
+![architecture](asset/a2a_ae_diagram.png)
 
 ### Application Screenshot
 
