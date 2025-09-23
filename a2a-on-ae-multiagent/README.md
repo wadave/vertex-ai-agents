@@ -16,7 +16,13 @@ This document describes a web application demonstrating the integration of Googl
 
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
+Option 1: Host Agent is built using A2A Server.
+
 ![architecture](asset/a2a_ae_diagram.png)
+
+Option 2: Host Agent is built using Agent Engine server and ADK agents.
+
+![architecture](asset/a2a_adk_diagram.png)
 
 ### Application Screenshot
 
@@ -79,54 +85,29 @@ Ensure your project follows this structure:
 ├── a2a_multiagent_mcp_app
 │   ├── a2a_agents
 │   │   ├── cocktail_agent
-│   │   │   ├── cocktail_agent_card.py
-│   │   │   ├── cocktail_agent_executor2.py
-│   │   │   ├── cocktail_agent_executor.py
-│   │   │   ├── deploy_cocktail_a2a_on_agent_engine.ipynb
-│   │   │   ├── __init__.py
-│   │   │   └── README.md
-│   │   ├── hosting_agent
-│   │   │   ├── agent_executor.py
-│   │   │   ├── deploy_a2a_on_agent_engine.ipynb
-│   │   │   ├── hosting_agent_card.py
-│   │   │   ├── hosting_agent.py
-│   │   │   ├── __init__.py
-│   │   │   ├── pyproject.toml
-│   │   │   ├── README.md
-│   │   │   └── remote_connection.py
+│   │   ├── hosting_agent_option1
+│   │   ├── hosting_agent_option2
 │   │   └── weather_agent
-│   │       ├── deploy_weather_a2a_on_agent_engine.ipynb
-│   │       ├── __init__.py
-│   │       ├── README.md
-│   │       ├── weather_agent_card.py
-│   │       ├── weather_agent_executor2.py
-│   │       ├── weather_agent_executor.py
-│   │       └── weather_agent.py
-│   ├── frontend
+│   ├── frontend_option1
 │   │   ├── Dockerfile
 │   │   ├── main.py
 │   │   ├── pyproject.toml
 │   │   ├── README.md
 │   │   ├── static
-│   │   │   └── a2a.png
+│   │   └── uv.lock
+│   ├── frontend_option2
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── register_to_agentspace.sh
+│   │   ├── static
 │   │   └── uv.lock
 │   └── mcp_servers
 │       ├── cocktail_mcp_server
-│       │   ├── cocktail_server.py
-│       │   ├── Dockerfile
-│       │   ├── pyproject.toml
-│       │   ├── README.md
-│       │   ├── test_server.py
-│       │   └── uv.lock
 │       └── weather_mcp_server
-│           ├── Dockerfile
-│           ├── pyproject.toml
-│           ├── README.md
-│           ├── test_server.py
-│           ├── uv.lock
-│           └── weather_server.py
 ├── asset
-│   ├── a2a_ae_demo.png
+│   ├── a2a_ae_diagram.png
 │   └── screenshot.png
 ├── main.py
 ├── pyproject.toml
@@ -146,5 +127,5 @@ Go to a2a_multiagent_mcp_app/a2a_agents folder, follow the `README.md` to set up
 
 ## **4. Run the Application**
 
-go to a2a_multiagent_mcp_app/frontend folder, follow the `README.md` to run the application.
+go to a2a_multiagent_mcp_app/frontend folder_option1/2, follow the `README.md` to run the application.
 

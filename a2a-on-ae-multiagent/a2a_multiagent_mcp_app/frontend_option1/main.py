@@ -1,25 +1,14 @@
-import gradio as gr
-from typing import List, AsyncIterator
-# from adk_agent.agent import (  # Removed as it's not used in this script
-#     root_agent as routing_agent,
-# )
-# from google.adk.sessions import InMemorySessionService # Removed, not used
-# from google.adk.runners import Runner # Removed, not used
-# from google.adk.events import Event # Removed, not used
-# from google.genai import types # Removed, not used
-from pprint import pformat
 import asyncio
-import traceback  # Import the traceback module
 import os
-from google.auth import default
-from google.auth.transport.requests import Request as AuthRequest
-import vertexai
-from google.genai import types as genai_types # Aliased to avoid conflict
-from dotenv import load_dotenv
+import traceback
+from pprint import pformat
+from typing import AsyncIterator, List
+
+import gradio as gr
 import httpx
+import vertexai
 from a2a.client import Client, ClientConfig, ClientFactory
 from a2a.types import (
-    AgentSkill,
     Message,
     Part,
     Role,
@@ -29,12 +18,18 @@ from a2a.types import (
     TransportProtocol,
     UnsupportedOperationError,
 )
+from dotenv import load_dotenv
+from google.auth import default
+from google.auth.transport.requests import Request as AuthRequest
+from google.genai import types as genai_types  # Aliased to avoid conflict
 
-PROJECT_ID = "dw-genai-dev"  # @param {type: "string", placeholder: "[your-project-id]", isTemplate: true}
-if not PROJECT_ID or PROJECT_ID == "[your-project-id]":
-    PROJECT_ID = str(os.environ.get("GOOGLE_CLOUD_PROJECT"))
+load_dotenv()
 
-LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+PROJECT_ID = os.getenv("PROJECT_ID")
+PROJECT_NUMBER = os.getenv("PROJECT_NUMBER")
+AGENT_ENGINE_ID = os.getenv("AGENT_ENGINE_ID")
+LOCATION = os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1')
+
 
 # Initialize Vertex AI session
 vertexai.init(project=PROJECT_ID, location=LOCATION)
@@ -49,11 +44,11 @@ client = vertexai.Client(
 
 
 remote_a2a_agent_resource_name = (
-    "projects/496235138247/locations/us-central1/reasoningEngines/5241649006538391552"
+    f"projects/{PROJECT_NUMBER}/locations/us-central1/reasoningEngines/{AGENT_ENGINE_ID}"
 )
 
 
-load_dotenv()  #
+load_dotenv()  
 
 
 class GoogleAuth(httpx.Auth):
@@ -83,16 +78,11 @@ async def get_agent_card(resource_name: str):
     }
 
     remote_a2a_agent = client.agent_engines.get(
-        name=resource_name, # Use the passed-in resource_name
+        name=resource_name,
         config=config,
     )
 
     return await remote_a2a_agent.handle_authenticated_agent_card()
-
-
-# These variables were not used in the function, but defined globally
-PROJECT_NUMBER = os.environ.get("PROJECT_NUMBER")
-MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL")
 
 
 async def get_response_from_agent(
@@ -231,3 +221,4 @@ if __name__ == "__main__":
         print("Created 'static' directory. Please add your 'a2a.png' image there.")
     
     asyncio.run(main())
+    
