@@ -2,6 +2,9 @@
 
 > **⚠️ DISCLAIMER: THIS IS NOT AN OFFICIALLY SUPPORTED GOOGLE PRODUCT. THIS PROJECT IS INTENDED FOR DEMONSTRATION PURPOSES ONLY. IT IS NOT INTENDED FOR USE IN A PRODUCTION ENVIRONMENT.**
 
+## **0. Ceate the .env file**
+ Create the .env using the .env.example file
+ 
 ## **1. Run it locally**
 
 ```bash
