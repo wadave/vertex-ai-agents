@@ -4,11 +4,11 @@
 >
 > **⚠️ Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
 
-This document describes a multi-agent set up using Agent2Agent (A2A) and a example traceability extension implementation for the hosting agents and how the extension is activated on the server and included in the response.
+This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
 
 ## Overview
 
-This document describes a web application demonstrating the integration of Google's Open Source frameworks Agent2Agent (A2A) and Agent Development Kit (ADK) for multi-agent orchestration with Model Context Protocol (MCP) clients. The application features a host agent coordinating tasks between specialized remote A2Aagents that interact with various MCP servers to fulfill user requests.
+This document describes a web application demonstrating the integration of Google's Open Source frameworks Agent2Agent (A2A) and Agent Development Kit (ADK) for multi-agent orchestration with Model Context Protocol (MCP) clients. The application features a host agent coordinating tasks between specialized remote A2A agents that interact with various MCP servers to fulfill user requests.
 
 ### Architecture
 
@@ -113,11 +113,11 @@ Ensure your project follows this structure:
 
 ### 2. Deploy MCP servers
 
-Navigate to the `a2a_multiagent_mcp_app/mcp_servers` directory and follow the `README.md` file to set up the MCP servers on Cloud Run.
+Navigate to the `a2a_multiagent_mcp_app/mcp_servers` sub directories and follow the `README.md` file to set up the MCP servers on Cloud Run.
 
 ### 3. Deploy A2A Agents
 
-Navigate to the `a2a_multiagent_mcp_app/a2a_agents` directory and follow the `README.md` file to set up the A2A agents on Agent Engine.
+Navigate to the `a2a_multiagent_mcp_app/a2a_agents` sub directories and follow the `README.md` file to set up the A2A agents on Agent Engine.
 
 ### 4. Run the Application
 
