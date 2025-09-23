@@ -1,10 +1,8 @@
 # A2A Multi-Agent on Agent Engine
 
-----
 > **⚠️ DISCLAIMER**: THIS DEMO IS INTENDED FOR DEMONSTRATION PURPOSES ONLY. IT IS NOT INTENDED FOR USE IN A PRODUCTION ENVIRONMENT.
 >
-> **⚠️ Important:** A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
-----
+> **⚠️ Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
 
 This document describes a multi-agent set up using Agent2Agent (A2A) and a example traceability extension implementation for the hosting agents and how the extension is activated on the server and included in the response.
 
@@ -16,11 +14,11 @@ This document describes a web application demonstrating the integration of Googl
 
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
-Option 1: Host Agent is built using A2A Server.
+**Option 1: Host Agent is built using A2A Server.**
 
 ![architecture](asset/a2a_ae_diagram.png)
 
-Option 2: Host Agent is built using Agent Engine server and ADK agents.
+**Option 2: Host Agent is built using Agent Engine server and ADK agents.**
 
 ![architecture](asset/a2a_adk_diagram.png)
 
@@ -42,18 +40,18 @@ The application employs three distinct agents:
 
 The agents interact with the following MCP servers:
 
-1. **Cocktail MCP Server** (Local Code)
-   - Provides 5 tools:
-     - `search cocktail by name`
-     - `list all cocktail by first letter`
-     - `search ingredient by name`
-     - `list random cocktails`
-     - `lookup full cocktail details by id`
-2. **Weather MCP Server** (Local Code)
-   - Provides 3 tools:
-     - `get weather forecast by city name`
-     - `get weather forecast by coordinates`
-     - `get weather alert by state code`
+1.  **Cocktail MCP Server** (Local Code)
+    - Provides 5 tools:
+        - `search cocktail by name`
+        - `list all cocktail by first letter`
+        - `search ingredient by name`
+        - `list random cocktails`
+        - `lookup full cocktail details by id`
+2.  **Weather MCP Server** (Local Code)
+    - Provides 3 tools:
+        - `get weather forecast by city name`
+        - `get weather forecast by coordinates`
+        - `get weather alert by state code`
 
 ## Example Usage
 
@@ -64,19 +62,17 @@ Here are some example questions you can ask the chatbot:
 - `Please get weather forecast for New York`
 - `Please get weather forecast for 40.7128,-74.0060`
 
-
 ## Setup and Deployment
 
 ### Prerequisites
 
 Before running the application locally, ensure you have the following installed:
 
-1. [Python 3.12+](https://www.python.org/downloads/)
-2. gcloud SDK: [https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install)
-2. **(Optional) uv:** The Python package management tool used in this project. Follow the installation guide: [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
+1.  [Python 3.12+](https://www.python.org/downloads/)
+2.  gcloud SDK: [https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install)
+3.  **(Optional) uv:** The Python package management tool used in this project. Follow the installation guide: [https://docs.astral.sh/uv/getting-started/installation/](https://docs.astral.sh/uv/getting-started/installation/)
 
-
-## **1. Project Structure**
+### 1. Project Structure
 
 Ensure your project follows this structure:
 
@@ -113,31 +109,28 @@ Ensure your project follows this structure:
 ├── pyproject.toml
 ├── README.md
 └── uv.lock
-
 ```
 
-## **2. Deploy MCP servers**
+### 2. Deploy MCP servers
 
-Go to a2a_multiagent_mcp_app/mcp_servers folder, follow the `README.md` to set up Cloud Run
+Navigate to the `a2a_multiagent_mcp_app/mcp_servers` directory and follow the `README.md` file to set up the MCP servers on Cloud Run.
 
-## **3. Deploy A2A Agents**
+### 3. Deploy A2A Agents
 
-Go to a2a_multiagent_mcp_app/a2a_agents folder, follow the `README.md` to set up A2A agents on Agent Engine.
+Navigate to the `a2a_multiagent_mcp_app/a2a_agents` directory and follow the `README.md` file to set up the A2A agents on Agent Engine.
 
+### 4. Run the Application
 
-## **4. Run the Application**
-
-go to a2a_multiagent_mcp_app/frontend folder_option1/2, follow the `README.md` to run the application.
-
+Navigate to either `a2a_multiagent_mcp_app/frontend_option1` or `a2a_multiagent_mcp_app/frontend_option2` and follow the `README.md` to run the application.
 
 ## Disclaimer
-Important: The sample code provided is for demonstration purposes and illustrates the mechanics of the Agent-to-Agent (A2A) protocol. When building production applications, it is critical to treat any agent operating outside of your direct control as a potentially untrusted entity.
+
+**Important**: The sample code provided is for demonstration purposes and illustrates the mechanics of the Agent-to-Agent (A2A) protocol. When building production applications, it is critical to treat any agent operating outside of your direct control as a potentially untrusted entity.
 
 All data received from an external agent—including but not limited to its AgentCard, messages, artifacts, and task statuses—should be handled as untrusted input. For example, a malicious agent could provide an AgentCard containing crafted data in its fields (e.g., description, name, skills.description). If this data is used without sanitization to construct prompts for a Large Language Model (LLM), it could expose your application to prompt injection attacks. Failure to properly validate and sanitize this data before use can introduce security vulnerabilities into your application.
 
 Developers are responsible for implementing appropriate security measures, such as input validation and secure handling of credentials to protect their systems and users.
 
-
 ## License
-This project is licensed under the [MIT License](LICENSE).
 
+This project is licensed under the [MIT License](LICENSE).
