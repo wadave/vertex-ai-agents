@@ -7,7 +7,6 @@ members = [
     "a2a-frontend",
     "a2a-on-ae-multiagent",
     "adk-frontend",
-    "cocktail-agent",
     "hosting-agent1",
     "hosting-agent2",
     "weather-agent",
@@ -374,33 +373,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/52/39/069100b84d7418bc358d81669d5748efb14b9cceacd2f9c75f550424132f/cloudpickle-3.1.1.tar.gz", hash = "sha256:b216fa8ae4019d5482a8ac3c95d8f6346115d8835911fd4aefd1a445e4242c64", size = 22113, upload-time = "2025-01-14T17:02:05.085Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/e8/64c37fadfc2816a7701fa8a6ed8d87327c7d54eacfbfb6edab14a2f2be75/cloudpickle-3.1.1-py3-none-any.whl", hash = "sha256:c8c5a44295039331ee9dad40ba100a9c7297b6f988e50e87ccdf3765a668350e", size = 20992, upload-time = "2025-01-14T17:02:02.417Z" },
-]
-
-[[package]]
-name = "cocktail-agent"
-version = "0.1.0"
-source = { virtual = "a2a_multiagent_mcp_app/a2a_agents/cocktail_agent" }
-dependencies = [
-    { name = "a2a-sdk" },
-    { name = "click" },
-    { name = "google-adk" },
-    { name = "google-auth" },
-    { name = "google-auth-oauthlib" },
-    { name = "google-cloud-aiplatform" },
-    { name = "google-genai" },
-    { name = "gradio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2a-sdk", specifier = ">=0.3.5" },
-    { name = "click", specifier = ">=8.2.1" },
-    { name = "google-adk", specifier = ">=1.14.1" },
-    { name = "google-auth", extras = ["openid"], specifier = ">=2.40.3" },
-    { name = "google-auth-oauthlib", specifier = ">=1.2.2" },
-    { name = "google-cloud-aiplatform", specifier = ">=1.113.0" },
-    { name = "google-genai", specifier = ">=1.36.0" },
-    { name = "gradio", specifier = ">=5.46.1" },
 ]
 
 [[package]]

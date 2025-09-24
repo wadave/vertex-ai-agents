@@ -13,4 +13,5 @@ dependencies = [
     "google-cloud-aiplatform>=1.113.0",
     "google-genai>=1.36.0",
     "gradio>=5.46.1",
+    "numpy>=2.3.3",
 ]
