@@ -1,5 +1,5 @@
 [project]
-name = "a2a-adk-mcp"
+name = "a2a-on-ae-multiagent"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -17,5 +17,10 @@ dependencies = [
 
 [tool.uv.workspace]
 members = [
- 
+    "a2a_multiagent_mcp_app/a2a_agents/cocktail_agent",
+    "a2a_multiagent_mcp_app/a2a_agents/weather_agent",
+    "a2a_multiagent_mcp_app/a2a_agents/hosting_agent_option1",
+    "a2a_multiagent_mcp_app/a2a_agents/hosting_agent_option2",
+    "a2a_multiagent_mcp_app/frontend_option1",
+    "a2a_multiagent_mcp_app/frontend_option2",
 ]

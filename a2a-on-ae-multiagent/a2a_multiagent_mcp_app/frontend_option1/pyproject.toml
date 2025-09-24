@@ -15,5 +15,3 @@ dependencies = [
     "gradio>=5.46.1",
 ]
 
-[tool.uv.workspace]
-members =[] 
