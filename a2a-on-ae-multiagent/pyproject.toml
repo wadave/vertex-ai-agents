@@ -14,6 +14,7 @@ dependencies = [
     "google-genai>=1.36.0",
     "gradio>=5.46.1",
     "ipykernel>=6.30.1",
+    "nbqa>=1.9.1",
 ]
 
 

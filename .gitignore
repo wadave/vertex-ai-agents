@@ -308,6 +308,7 @@ scratch
 #Ignore dev notebooks
 dev_notebooks/
 credentials.json
+client_secret.json
 token.json
 .python-version
 .pre-commit-config.yaml
