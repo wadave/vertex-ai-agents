@@ -13,6 +13,7 @@ dependencies = [
     "google-cloud-aiplatform>=1.113.0",
     "google-genai>=1.36.0",
     "gradio>=5.46.1",
+    "ipykernel>=6.30.1",
 ]
 
 
