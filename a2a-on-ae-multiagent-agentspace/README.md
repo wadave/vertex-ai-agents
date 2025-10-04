@@ -87,7 +87,6 @@ Ensure your project follows this structure:
 │   │   ├── main.py
 │   │   ├── pyproject.toml
 │   │   ├── README.md
-│   │   ├── register_to_agentspace.sh
 │   │   ├── static
 │   │   └── uv.lock
 │   └── mcp_servers
