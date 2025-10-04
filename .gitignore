@@ -313,6 +313,7 @@ token.json
 .python-version
 .pre-commit-config.yaml
 .env
+tokens.json
 
 a2a-adk-mcp2/
 adk-remote-mcp2/

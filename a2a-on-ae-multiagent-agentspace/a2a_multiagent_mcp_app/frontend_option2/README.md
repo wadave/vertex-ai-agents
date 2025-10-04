@@ -75,13 +75,8 @@ The optional step is to make your deployed agent available in AgentSpace.
 
 Get the Reasoning Engine ID: The REASONING_ENGINE_ID is the ID of your Agent Engine instance. 
 
-Update and run the expose script:
+Go to `a2a-on-ae-multiagent-agentspace/a2a_multiagent_mcp_app/a2a_agents/register_agent_to_agentspace` folder to use the notebook `register_agent_to_agentspace.ipynb`
 
-Open register_to_agentspace.sh and ensure the REASONING_ENGINE_ID and other variables are set correctly.
-Execute the script:
-```bash
-source regiester_to_agentspace.sh
-```
 This script registers your Agent Engine instance as a new custom agent.
 
 Use the agent in AgentSpace:

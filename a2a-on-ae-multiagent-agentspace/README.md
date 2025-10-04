@@ -14,10 +14,11 @@ This document describes a web application demonstrating the integration of Googl
 
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
-**Host Agent is built using A2A Server.**
 
-![architecture](asset/a2a_ae_diagram.png)
 
+**Host Agent is built using Agent Engine server and ADK agents.**
+
+![architecture](asset/a2a_adk_diagram.png)
 
 ### Application Screenshot
 
@@ -88,6 +89,17 @@ Ensure your project follows this structure:
 │   │   ├── README.md
 │   │   ├── static
 │   │   └── uv.lock
+│   ├── frontend_option2
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── register_to_agentspace.sh
+│   │   ├── static
+│   │   └── uv.lock
+│   └── mcp_servers
+│       ├── cocktail_mcp_server
+│       └── weather_mcp_server
 ├── asset
 │   ├── a2a_ae_diagram.png
 │   └── screenshot.png
@@ -107,7 +119,7 @@ Navigate to the `a2a_multiagent_mcp_app/a2a_agents` sub directories and follow t
 
 ### 4. Run the Application
 
-Navigate to `a2a_multiagent_mcp_app/frontend_option1` and follow the `README.md` to run the application.
+Navigate to `a2a_multiagent_mcp_app/frontend_option2` and follow the `README.md` to run the application.
 
 ## Disclaimer
 
