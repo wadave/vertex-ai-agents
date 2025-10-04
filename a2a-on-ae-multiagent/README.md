@@ -82,12 +82,12 @@ Ensure your project follows this structure:
 │   │   ├── hosting_agent_option2
 │   │   └── weather_agent
 │   ├── frontend_option1
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   ├── pyproject.toml
-│   │   ├── README.md
-│   │   ├── static
-│   │   └── uv.lock
+│       ├── Dockerfile
+│       ├── main.py
+│       ├── pyproject.toml
+│       ├── README.md
+│       ├── static
+│       └── uv.lock
 ├── asset
 │   ├── a2a_ae_diagram.png
 │   └── screenshot.png

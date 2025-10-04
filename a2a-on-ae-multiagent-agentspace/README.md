@@ -82,13 +82,6 @@ Ensure your project follows this structure:
 │   │   ├── hosting_agent_option1
 │   │   ├── hosting_agent_option2
 │   │   └── weather_agent
-│   ├── frontend_option1
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   ├── pyproject.toml
-│   │   ├── README.md
-│   │   ├── static
-│   │   └── uv.lock
 │   ├── frontend_option2
 │   │   ├── Dockerfile
 │   │   ├── main.py
