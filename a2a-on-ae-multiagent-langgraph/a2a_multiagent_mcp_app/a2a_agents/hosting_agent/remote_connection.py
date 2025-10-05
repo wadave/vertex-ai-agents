@@ -50,16 +50,16 @@ class RemoteAgentConnections:
     async def send_message(self, message: Message) -> Task | Message | None:
         lastTask: Task | None = None
         try:
-            print('Sending message to remote agent:', message)
+            print("Sending message to remote agent:", message)
             async for event in self.agent_client.send_message(message):
                 if isinstance(event, Message):
-                    print('got event object from remote agent:', event)
+                    print("got event object from remote agent:", event)
                     return event
                 if self.is_terminal_or_interrupted(event[0]):
                     return event[0]
                 lastTask = event[0]
         except Exception as e:
-            print('Exception found in send_message')
+            print("Exception found in send_message")
             traceback.print_exc()
             raise e
         return lastTask

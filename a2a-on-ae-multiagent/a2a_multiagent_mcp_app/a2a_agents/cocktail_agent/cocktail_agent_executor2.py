@@ -68,8 +68,7 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
     # The following means the token was never added to the toolset
     # The headers reset every time so cannot check for headers.
     if "token_expiration_time" not in toolset_cache[mcp_toolset._tool_set_name]:
-        logging.info(
-            "Getting a token and adding to X-Serverless-Authorization header")
+        logging.info("Getting a token and adding to X-Serverless-Authorization header")
         mcp_toolset._connection_params.headers = {}
         id_token = get_id_token(
             os.environ.get("MCP_SERVER_URL", "http://localhost:8080")
@@ -90,9 +89,9 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             # Fallback to local decoder
             decoded_payload = decode_jwt_no_verify(id_token)
         logging.debug("Decoded Token:", decoded_payload)
-        toolset_cache[mcp_toolset._tool_set_name][
-            "prev_used_token"
-        ] = f"Bearer {id_token}"
+        toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+            f"Bearer {id_token}"
+        )
         toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
             decoded_payload["exp"]
         )
@@ -110,7 +109,7 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             time_after_threshold_minutes
             >= toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"]
         ):
-            logging.info(f"Getting a new token and updating the cache")
+            logging.info("Getting a new token and updating the cache")
             id_token = get_id_token(
                 os.environ.get("MCP_SERVER_URL", "http://localhost:8080")
             )
@@ -128,9 +127,9 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             except Exception:
                 decoded_payload = decode_jwt_no_verify(id_token)
             logging.debug("Decoded Token:", decoded_payload)
-            toolset_cache[mcp_toolset._tool_set_name][
-                "prev_used_token"
-            ] = f"Bearer {id_token}"
+            toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+                f"Bearer {id_token}"
+            )
             toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
                 decoded_payload["exp"]
             )
@@ -166,7 +165,6 @@ class MCPToolsetWithToolAccess(MCPToolset):
         self,
         readonly_context: Optional[ReadonlyContext] = None,
     ) -> List[BaseTool]:
-
         tools = None
 
         if "tools" not in toolset_cache[self._tool_set_name]:
@@ -185,8 +183,7 @@ class MCPToolsetWithToolAccess(MCPToolset):
             )
             tools = original_tools
         else:
-            logging.error(
-                f"Found tools for the toolset {self._tool_set_name} in cache")
+            logging.error(f"Found tools for the toolset {self._tool_set_name} in cache")
             tools = toolset_cache[self._tool_set_name]["tools"]
 
         return tools
@@ -259,12 +256,6 @@ class CocktailAgentExecutor(AgentExecutor):
         """
         if self.agent is None:
             # --- Environment setup ---
-            mcp_url = os.getenv("MCP_SERVER_URL")
-
-            cocktail_server_params = StreamableHTTPConnectionParams(
-                url=mcp_url,
-                timeout=60,
-            )
 
             # Create the actual agent
             self.agent = LlmAgent(
@@ -337,8 +328,7 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
             logging.info(f"Using session: {session.id}")
 
             # Prepare the user message in ADK format
-            content = types.Content(role=Role.user, parts=[
-                                    types.Part(text=query)])
+            content = types.Content(role=Role.user, parts=[types.Part(text=query)])
 
             # Run the agent asynchronously
             # This may involve multiple LLM calls and tool uses
@@ -371,8 +361,7 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
             # Always inform the client when something goes wrong
             logging.error(f"Error during execution: {e!s}", exc_info=True)
             await updater.update_status(
-                TaskState.failed, message=new_agent_text_message(
-                    f"Error: {e!s}")
+                TaskState.failed, message=new_agent_text_message(f"Error: {e!s}")
             )
             # Re-raise for proper error handling up the stack
             raise
@@ -386,8 +375,7 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
         )
 
         if not session:
-            logging.info(
-                f"No session found for {context_id}, creating new one.")
+            logging.info(f"No session found for {context_id}, creating new one.")
             session = await self.runner.session_service.create_session(
                 app_name=self.runner.app_name,
                 user_id="user",

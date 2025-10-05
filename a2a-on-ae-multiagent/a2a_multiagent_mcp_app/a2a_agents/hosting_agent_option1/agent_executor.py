@@ -1,18 +1,13 @@
 import logging
-import os
-from typing import Dict, NoReturn
+from typing import NoReturn
 import httpx
 from dotenv import load_dotenv
 from google.adk import Runner
-from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService
 
-from google.auth import exceptions as google_auth_exceptions
-from google.auth.transport import requests as google_auth_requests
 from google.genai import types
-from google.oauth2 import id_token as google_id_token
 
 # A2A
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -40,12 +35,21 @@ class GoogleAuth(httpx.Auth):
     """A custom httpx Auth class for Google Cloud authentication."""
 
     def __init__(self):
+        """Initializes the GoogleAuth instance."""
         self.credentials, self.project = default(
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
         self.auth_request = AuthRequest()
 
     def auth_flow(self, request):
+        """Adds the Authorization header to the request.
+
+        Args:
+            request: The request to add the header to.
+
+        Yields:
+            The request with the Authorization header.
+        """
         # Refresh the credentials if they are expired
         if not self.credentials.valid:
             print("Credentials expired, refreshing...")

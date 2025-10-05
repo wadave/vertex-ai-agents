@@ -15,8 +15,8 @@
 # limitations under the License.
 
 __all__ = [
-	"hosting_agent_card",
-	"agent_executor",
-	"remote_connection",
-	"hosting_agent",
+    "hosting_agent_card",
+    "agent_executor",
+    "remote_connection",
+    "hosting_agent",
 ]

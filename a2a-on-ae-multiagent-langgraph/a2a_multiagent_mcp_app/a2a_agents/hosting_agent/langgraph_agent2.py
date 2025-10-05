@@ -11,7 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This module defines the HostingAgent, a central routing agent.
 
+The HostingAgent is responsible for managing connections to various specialized
+agents (like Weather and Cocktail agents), delegating user requests to the
+appropriate agent, and returning the results. It uses LangGraph to create a
+ReAct-style agent that can reason about which tool (i.e., which specialized
+agent) to call based on the user's query.
+
+The agent's logic is primarily defined in the `root_instruction` method, which
+dynamically generates a system prompt to guide the underlying language model.
+This allows the agent to handle greetings, capability questions, and task
+delegation appropriately.
+"""
 import asyncio
 import logging
 import os
@@ -51,6 +63,24 @@ class HostingAgent:
 
     This is the agent responsible for choosing which remote agents to send
     tasks to and coordinate their work.
+
+    Attributes:
+        task_callback: An optional callback function to be invoked when a task's
+          status is updated.
+        httpx_client: An asynchronous HTTP client for making requests to remote
+          agents.
+        client_factory: A factory for creating clients to communicate with remote
+          agents based on their transport protocols.
+        remote_agent_connections: A dictionary mapping agent names to their
+          `RemoteAgentConnections` instances, which manage communication.
+        cards: A dictionary mapping agent names to their `AgentCard` objects,
+          which contain metadata about each agent's capabilities.
+        agents: A formatted string listing the available agents and their skills,
+          used for populating the agent's prompt.
+        remote_agent_addresses: A list of base URLs for the remote agents that
+          this hosting agent can connect to.
+        _cards_loaded: A boolean flag indicating whether the agent cards for all
+          remote agents have been successfully loaded.
     """
 
     def __init__(
@@ -123,7 +153,7 @@ class HostingAgent:
         Returns:
             CompiledStateGraph that can be used for streaming execution.
         """
-        GOOGLE_GENAI_MODEL = os.getenv('GOOGLE_GENAI_MODEL', "gemini-2.5-flash")
+        GOOGLE_GENAI_MODEL = os.getenv("GOOGLE_GENAI_MODEL", "gemini-2.5-flash")
         model = ChatVertexAI(
             model=GOOGLE_GENAI_MODEL,
             temperature=0,
@@ -195,15 +225,40 @@ YOUR ONLY TASK: Return the above response EXACTLY as-is to the user. Do not modi
 
             # Greetings and conversational phrases
             greetings = ["hi", "hello", "hey", "greetings", "howdy"]
-            conversational = ["how are you", "how is it going", "how's it going", "what's up", "how do you do", "nice to meet you"]
-            is_greeting = lower_question in greetings or any(lower_question.startswith(g + " ") or lower_question.startswith(g + ",") for g in greetings)
-            is_conversational = any(phrase in lower_question for phrase in conversational)
+            conversational = [
+                "how are you",
+                "how is it going",
+                "how's it going",
+                "what's up",
+                "how do you do",
+                "nice to meet you",
+            ]
+            is_greeting = lower_question in greetings or any(
+                lower_question.startswith(g + " ") or lower_question.startswith(g + ",")
+                for g in greetings
+            )
+            is_conversational = any(
+                phrase in lower_question for phrase in conversational
+            )
 
             # Capability questions
-            capability_keywords = ["what can you", "what do you", "what are you", "your capabilities", "help me", "what can i", "what services", "what features"]
-            is_capability_question = any(keyword in lower_question for keyword in capability_keywords)
+            capability_keywords = [
+                "what can you",
+                "what do you",
+                "what are you",
+                "your capabilities",
+                "help me",
+                "what can i",
+                "what services",
+                "what features",
+            ]
+            is_capability_question = any(
+                keyword in lower_question for keyword in capability_keywords
+            )
 
-            should_respond_directly = is_greeting or is_conversational or is_capability_question
+            should_respond_directly = (
+                is_greeting or is_conversational or is_capability_question
+            )
 
         if should_respond_directly:
             return f"""The user is greeting you, being conversational, or asking about your capabilities.
@@ -254,7 +309,7 @@ Do NOT rephrase, modify, or create a different question!
             and state["session_active"]
             and "agent" in state
         ):
-            return {"active_agent": f'{state["agent"]}'}
+            return {"active_agent": f"{state['agent']}"}
         return {"active_agent": "None"}
 
     def list_remote_agents(self) -> str:

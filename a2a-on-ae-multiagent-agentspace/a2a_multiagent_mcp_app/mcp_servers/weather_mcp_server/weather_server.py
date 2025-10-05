@@ -1,12 +1,13 @@
+"""This module contains the weather MCP server."""
+import asyncio
 import json
+import os
 from typing import Any, Dict, Optional
 
+import httpx
+from fastmcp import FastMCP
 from geopy.exc import GeocoderServiceError, GeocoderTimedOut
 from geopy.geocoders import Nominatim
-import httpx
-from fastmcp import FastMCP 
-import asyncio
-import os
 
 # Initialize FastMCP server
 mcp = FastMCP("weather MCP server")
@@ -56,29 +57,29 @@ async def get_weather_response(endpoint: str) -> Optional[Dict[str, Any]]:
 
 def format_alert(feature: Dict[str, Any]) -> str:
     """Format an alert feature into a readable string."""
-    props = feature.get("properties", {})  # Safer access
+    props = feature.get("properties", {})
     # Use .get() with default values for robustness
     return f"""
-            Event: {props.get('event', 'Unknown Event')}
-            Area: {props.get('areaDesc', 'N/A')}
-            Severity: {props.get('severity', 'N/A')}
-            Certainty: {props.get('certainty', 'N/A')}
-            Urgency: {props.get('urgency', 'N/A')}
-            Effective: {props.get('effective', 'N/A')}
-            Expires: {props.get('expires', 'N/A')}
-            Description: {props.get('description', 'No description provided.').strip()}
-            Instructions: {props.get('instruction', 'No instructions provided.').strip()}
+            Event: {props.get("event", "Unknown Event")}
+            Area: {props.get("areaDesc", "N/A")}
+            Severity: {props.get("severity", "N/A")}
+            Certainty: {props.get("certainty", "N/A")}
+            Urgency: {props.get("urgency", "N/A")}
+            Effective: {props.get("effective", "N/A")}
+            Expires: {props.get("expires", "N/A")}
+            Description: {props.get("description", "No description provided.").strip()}
+            Instructions: {props.get("instruction", "No instructions provided.").strip()}
             """
 
 
 def format_forecast_period(period: Dict[str, Any]) -> str:
     """Formats a single forecast period into a readable string."""
     return f"""
-           {period.get('name', 'Unknown Period')}:
-             Temperature: {period.get('temperature', 'N/A')}°{period.get('temperatureUnit', 'F')}
-             Wind: {period.get('windSpeed', 'N/A')} {period.get('windDirection', 'N/A')}
-             Short Forecast: {period.get('shortForecast', 'N/A')}
-             Detailed Forecast: {period.get('detailedForecast', 'No detailed forecast            provided.').strip()}
+           {period.get("name", "Unknown Period")}:
+             Temperature: {period.get("temperature", "N/A")}°{period.get("temperatureUnit", "F")}
+             Wind: {period.get("windSpeed", "N/A")} {period.get("windDirection", "N/A")}
+             Short Forecast: {period.get("shortForecast", "N/A")}
+             Detailed Forecast: {period.get("detailedForecast", "No detailed forecast            provided.").strip()}
            """
 
 
@@ -230,5 +231,5 @@ async def shutdown_event() -> None:
 
 
 if __name__ == "__main__":
-    #mcp.run(transport="sse")
+    # mcp.run(transport="sse")
     asyncio.run(mcp.run_async(transport="streamable-http", host="0.0.0.0", port=8080))

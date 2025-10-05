@@ -1,8 +1,11 @@
+"""
+This module contains the cocktail MCP server."""
+import asyncio
 import json
 from typing import Any, Dict, Optional
+
 import httpx
-from fastmcp import FastMCP 
-import asyncio  
+from fastmcp import FastMCP
 
 # Initialize FastMCP server
 mcp = FastMCP("cocktail MCP server")
@@ -15,8 +18,10 @@ http_client = httpx.AsyncClient(base_url=API_BASE_URL, timeout=30.0)
 
 # --- Helper Functions ---
 
+
 async def make_cocktaildb_request(
-    endpoint: str, params: Optional[Dict[str, str]] = None
+    endpoint: str,
+    params: Optional[Dict[str, str]] = None
 ) -> Optional[Dict[str, Any]]:
     """Makes a request to TheCocktailDB API using the shared client."""
     # Use the shared http_client, don't create a new one.
@@ -24,19 +29,17 @@ async def make_cocktaildb_request(
         response = await http_client.get(endpoint, params=params)
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
         data = response.json()
-        
+
         # The API returns null string instead of null JSON for no results
         if isinstance(data, str) and data.lower() == "null":
             return None
-        
+
         # Handle cases where the primary key (drinks/ingredients) might be null
-        if data and (
-            data.get("drinks") is None and data.get("ingredients") is None
-        ):
+        if data and (data.get("drinks") is None and data.get("ingredients") is None):
             if "drinks" in data or "ingredients" in data:
                 return None  # Explicitly no results found based on API structure
         return data
-        
+
     except httpx.HTTPStatusError as e:
         print(f"HTTP error occurred: {e}")
         return None
