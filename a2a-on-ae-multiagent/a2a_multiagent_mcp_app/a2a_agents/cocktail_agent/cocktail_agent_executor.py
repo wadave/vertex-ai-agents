@@ -281,7 +281,7 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
         for tool in self.agent.tools:
             if isinstance(tool, McpToolset):
                 # Access private attribute to update headers
-                if hasattr(tool._connection_params, 'headers'):
+                if hasattr(tool._connection_params, "headers"):
                     tool._connection_params.headers = fresh_headers
                     logging.debug("Refreshed MCP authentication headers")
 

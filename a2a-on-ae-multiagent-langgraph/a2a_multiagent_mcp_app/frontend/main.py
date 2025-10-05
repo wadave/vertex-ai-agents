@@ -11,7 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""A Gradio-based web interface for interacting with a remote A2A agent.
 
+This application provides a chat interface that allows users to send queries to
+a hosting agent running on Vertex AI. It handles authentication with Google
+Cloud, creates an A2A (Agent-to-Agent) client, and streams responses back to the
+user interface.
+
+The main components are:
+- A `GoogleAuth` class for handling `httpx` authentication.
+- A `get_response_from_agent` function that encapsulates the logic for sending
+  a message to the agent and processing its response.
+- A `main` function that sets up and launches the Gradio application.
+"""
 import asyncio
 import os
 import traceback
@@ -42,7 +54,7 @@ load_dotenv()
 PROJECT_ID = os.getenv("PROJECT_ID")
 PROJECT_NUMBER = os.getenv("PROJECT_NUMBER")
 AGENT_ENGINE_ID = os.getenv("AGENT_ENGINE_ID")
-LOCATION = os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1')
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 
 # Initialize Vertex AI session
@@ -57,24 +69,36 @@ client = vertexai.Client(
 )
 
 
-remote_a2a_agent_resource_name = (
-    f"projects/{PROJECT_NUMBER}/locations/us-central1/reasoningEngines/{AGENT_ENGINE_ID}"
-)
+remote_a2a_agent_resource_name = f"projects/{PROJECT_NUMBER}/locations/us-central1/reasoningEngines/{AGENT_ENGINE_ID}"
 
 
-load_dotenv()  
+load_dotenv()
 
 
 class GoogleAuth(httpx.Auth):
     """A custom httpx Auth class for Google Cloud authentication."""
 
     def __init__(self):
+        """Initializes the GoogleAuth instance.
+
+        This method retrieves the default Google Cloud credentials and project ID,
+        and sets up an authentication request object for refreshing credentials.
+        """
         self.credentials, self.project = default(
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
         self.auth_request = AuthRequest()
 
     def auth_flow(self, request):
+        """Handles the authentication flow for an httpx request.
+
+        This generator function refreshes the Google Cloud credentials if they have
+        expired, adds the necessary `Authorization` header to the request, and
+        then yields the request to be sent.
+
+        Args:
+            request: The `httpx` request object to be authenticated.
+        """
         # Refresh the credentials if they are expired
         if not self.credentials.valid:
             print("Credentials expired, refreshing...")
@@ -104,10 +128,10 @@ async def get_response_from_agent(
     history: List[gr.ChatMessage],
 ) -> AsyncIterator[gr.ChatMessage]:
     """Get response from host agent."""
-    
+
     a2a_client: Client = None  # Define client for the finally block
-    httpx_client: httpx.AsyncClient = None # Define httpx_client for the finally block
-    
+    httpx_client: httpx.AsyncClient = None  # Define httpx_client for the finally block
+
     try:
         # --- 1. Get Agent Card ---
         print("Fetching agent card...")
@@ -119,13 +143,13 @@ async def get_response_from_agent(
             timeout=120,
             auth=GoogleAuth(),
         )
-        
+
         # --- 3. Create A2A Client ---
         factory = ClientFactory(
             ClientConfig(
                 supported_transports=[TransportProtocol.http_json],
                 use_client_preference=True,
-                httpx_client=httpx_client, # Pass the authenticated client
+                httpx_client=httpx_client,  # Pass the authenticated client
             )
         )
         a2a_client = factory.create(remote_a2a_agent_card)
@@ -135,19 +159,19 @@ async def get_response_from_agent(
         message = Message(
             message_id=f"message-{os.urandom(8).hex()}",
             role=Role.user,
-            parts=[Part(root=TextPart(text=query))], # Simplified: just pass the query
+            parts=[Part(root=TextPart(text=query))],  # Simplified: just pass the query
         )
 
         # --- 5. Send Message and Stream Response ---
         print(f"Sending message to agent: {query}")
         response_stream = a2a_client.send_message(message)
-        
+
         final_result_text = None
 
         # Iterate over the async generator which yields task status updates
         async for response_chunk in response_stream:
             task_object = response_chunk[0]  # Task object is the first element
-            
+
             print(f"Received task update. Status: {task_object.status.state}")
 
             # Wait for the task to complete
@@ -156,7 +180,9 @@ async def get_response_from_agent(
                 if hasattr(task_object, "artifacts") and task_object.artifacts:
                     for artifact in task_object.artifacts:
                         # Find the first text part in the artifacts
-                        if artifact.parts and isinstance(artifact.parts[0].root, TextPart):
+                        if artifact.parts and isinstance(
+                            artifact.parts[0].root, TextPart
+                        ):
                             final_result_text = artifact.parts[0].root.text
                             print(f"Found artifact text: {final_result_text[:50]}...")
                             break  # Stop looking at artifacts
@@ -175,7 +201,10 @@ async def get_response_from_agent(
             yield gr.ChatMessage(role="assistant", content=final_result_text)
         else:
             print("Task finished but no text artifact was found.")
-            yield gr.ChatMessage(role="assistant", content="I processed your request but found no text response.")
+            yield gr.ChatMessage(
+                role="assistant",
+                content="I processed your request but found no text response.",
+            )
 
     except Exception as e:
         print(f"Error in get_response_from_agent (Type: {type(e)}): {e}")
@@ -191,7 +220,7 @@ async def get_response_from_agent(
             await a2a_client.close()
             print("A2A client closed.")
         elif httpx_client:
-             # Fallback if a2a_client creation failed but httpx_client was made
+            # Fallback if a2a_client creation failed but httpx_client was made
             await httpx_client.aclose()
             print("HTTPX client closed.")
 
@@ -211,9 +240,9 @@ async def main():
                 show_download_button=False,
                 container=False,
                 show_fullscreen_button=False,
-                elem_classes=["centered-image"] # Requires custom CSS
+                elem_classes=["centered-image"],  # Requires custom CSS
             )
-        
+
         gr.ChatInterface(
             get_response_from_agent,
             title="A2A Host Agent",
@@ -233,6 +262,5 @@ if __name__ == "__main__":
     if not os.path.exists("static"):
         os.makedirs("static")
         print("Created 'static' directory. Please add your 'a2a.png' image there.")
-    
+
     asyncio.run(main())
-    

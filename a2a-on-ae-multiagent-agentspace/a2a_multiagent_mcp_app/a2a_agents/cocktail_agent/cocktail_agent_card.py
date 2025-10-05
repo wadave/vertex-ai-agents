@@ -1,3 +1,4 @@
+"""This module contains the agent card for the cocktail agent."""
 # Helpers
 import logging
 

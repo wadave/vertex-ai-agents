@@ -60,13 +60,13 @@ def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
             "No Google Cloud credentials found (DefaultCredentialsError). "
             "Skipping OIDC token fetch. This is normal for local dev."
         )
-        
+
     except Exception as e:
         # Any other error means ADC was likely found but token minting failed
         # (e.g., IAM permissions, wrong audience, metadata server unreachable).
         logging.critical(
             f"An unexpected error occurred fetching OIDC token for audience '{audience}': {e}",
-            exc_info=True
+            exc_info=True,
         )
 
     # Return an empty dict if any exception occurred
@@ -96,24 +96,23 @@ class WeatherAgentExecutor(AgentExecutor):
         if self.agent is None:
             # --- Environment setup ---
             wea_url = os.getenv("MCP_SERVER_URL")
-            
+
             wea_auth_headers = get_gcp_auth_headers(wea_url)
 
             weather_server_params = StreamableHTTPConnectionParams(
                 url=wea_url,
                 headers=wea_auth_headers,
             )
-  
+
             # Create the actual agent
             self.agent = LlmAgent(
                 model="gemini-2.5-flash",
                 name="weather_agent",
                 description="An agent that can help questions about weather",
-                instruction=f"""You are a specialized weather forecast assistant. Your primary function is to utilize the provided tools to retrieve and relay weather information in response to user queries. You must rely exclusively on these tools for data and refrain from inventing information. Ensure that all responses include the detailed output from the tools used and are formatted in Markdown""",
+                instruction="""You are a specialized weather forecast assistant. Your primary function is to utilize the provided tools to retrieve and relay weather information in response to user queries. You must rely exclusively on these tools for data and refrain from inventing information. Ensure that all responses include the detailed output from the tools used and are formatted in Markdown""",
                 tools=[
                     McpToolset(
                         connection_params=weather_server_params,
-                      
                     )
                 ],
             )
@@ -195,8 +194,6 @@ class WeatherAgentExecutor(AgentExecutor):
                     await updater.complete()
                     break
 
-
-
         except Exception as e:
             # Errors should never pass silently (Zen of Python)
             # Always inform the client when something goes wrong
@@ -245,6 +242,8 @@ class WeatherAgentExecutor(AgentExecutor):
         2. Clean up resources
         3. Update task state to 'cancelled'
         """
-        logging.warning(f"Cancellation requested for task {context.task_id}, but not supported.")
+        logging.warning(
+            f"Cancellation requested for task {context.task_id}, but not supported."
+        )
         # Inform client that cancellation isn't supported
         raise ServerError(error=UnsupportedOperationError())

@@ -1,3 +1,4 @@
+"""This module contains the agent card for the weather agent."""
 from a2a.types import AgentSkill
 from vertexai.preview.reasoning_engines.templates.a2a import create_agent_card
 

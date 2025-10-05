@@ -11,12 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""A FastMCP server that provides cocktail-related tools.
 
+This server exposes tools for searching and looking up cocktail and ingredient
+information from TheCocktailDB API. It uses `httpx` for making asynchronous API
+requests.
+
+The server defines the following tools:
+- `search_cocktail_by_name`: Searches for cocktails by their name.
+- `list_cocktails_by_first_letter`: Lists all cocktails starting with a
+  specific letter.
+- `search_ingredient_by_name`: Searches for an ingredient by its name.
+- `list_random_cocktails`: Looks up a single random cocktail.
+- `lookup_cocktail_details_by_id`: Looks up the full details of a specific
+  cocktail by its ID.
+"""
 import json
 from typing import Any, Dict, Optional
 import httpx
-from fastmcp import FastMCP 
-import asyncio  
+from fastmcp import FastMCP
+import asyncio
 
 # Initialize FastMCP server
 mcp = FastMCP("cocktail MCP server")
@@ -29,6 +43,7 @@ http_client = httpx.AsyncClient(base_url=API_BASE_URL, timeout=30.0)
 
 # --- Helper Functions ---
 
+
 async def make_cocktaildb_request(
     endpoint: str, params: Optional[Dict[str, str]] = None
 ) -> Optional[Dict[str, Any]]:
@@ -38,19 +53,17 @@ async def make_cocktaildb_request(
         response = await http_client.get(endpoint, params=params)
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
         data = response.json()
-        
+
         # The API returns null string instead of null JSON for no results
         if isinstance(data, str) and data.lower() == "null":
             return None
-        
+
         # Handle cases where the primary key (drinks/ingredients) might be null
-        if data and (
-            data.get("drinks") is None and data.get("ingredients") is None
-        ):
+        if data and (data.get("drinks") is None and data.get("ingredients") is None):
             if "drinks" in data or "ingredients" in data:
                 return None  # Explicitly no results found based on API structure
         return data
-        
+
     except httpx.HTTPStatusError as e:
         print(f"HTTP error occurred: {e}")
         return None

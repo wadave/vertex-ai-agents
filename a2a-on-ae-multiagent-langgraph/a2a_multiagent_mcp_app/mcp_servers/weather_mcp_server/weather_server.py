@@ -11,14 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""A FastMCP server that provides weather-related tools.
 
+This server exposes tools for fetching weather alerts and forecasts from the
+National Weather Service (NWS) API. It uses `geopy` to convert city names into
+coordinates and `httpx` for making asynchronous API requests.
+
+The server defines the following tools:
+- `get_alerts`: Retrieves active weather alerts for a given US state.
+- `get_forecast`: Retrieves the weather forecast for a specific latitude and
+  longitude.
+- `get_forecast_by_city`: Retrieves the weather forecast for a given US city
+  and state.
+"""
 import json
 from typing import Any, Dict, Optional
 
 from geopy.exc import GeocoderServiceError, GeocoderTimedOut
 from geopy.geocoders import Nominatim
 import httpx
-from fastmcp import FastMCP 
+from fastmcp import FastMCP
 import asyncio
 import os
 
@@ -73,26 +85,26 @@ def format_alert(feature: Dict[str, Any]) -> str:
     props = feature.get("properties", {})  # Safer access
     # Use .get() with default values for robustness
     return f"""
-            Event: {props.get('event', 'Unknown Event')}
-            Area: {props.get('areaDesc', 'N/A')}
-            Severity: {props.get('severity', 'N/A')}
-            Certainty: {props.get('certainty', 'N/A')}
-            Urgency: {props.get('urgency', 'N/A')}
-            Effective: {props.get('effective', 'N/A')}
-            Expires: {props.get('expires', 'N/A')}
-            Description: {props.get('description', 'No description provided.').strip()}
-            Instructions: {props.get('instruction', 'No instructions provided.').strip()}
+            Event: {props.get("event", "Unknown Event")}
+            Area: {props.get("areaDesc", "N/A")}
+            Severity: {props.get("severity", "N/A")}
+            Certainty: {props.get("certainty", "N/A")}
+            Urgency: {props.get("urgency", "N/A")}
+            Effective: {props.get("effective", "N/A")}
+            Expires: {props.get("expires", "N/A")}
+            Description: {props.get("description", "No description provided.").strip()}
+            Instructions: {props.get("instruction", "No instructions provided.").strip()}
             """
 
 
 def format_forecast_period(period: Dict[str, Any]) -> str:
     """Formats a single forecast period into a readable string."""
     return f"""
-           {period.get('name', 'Unknown Period')}:
-             Temperature: {period.get('temperature', 'N/A')}°{period.get('temperatureUnit', 'F')}
-             Wind: {period.get('windSpeed', 'N/A')} {period.get('windDirection', 'N/A')}
-             Short Forecast: {period.get('shortForecast', 'N/A')}
-             Detailed Forecast: {period.get('detailedForecast', 'No detailed forecast            provided.').strip()}
+           {period.get("name", "Unknown Period")}:
+             Temperature: {period.get("temperature", "N/A")}°{period.get("temperatureUnit", "F")}
+             Wind: {period.get("windSpeed", "N/A")} {period.get("windDirection", "N/A")}
+             Short Forecast: {period.get("shortForecast", "N/A")}
+             Detailed Forecast: {period.get("detailedForecast", "No detailed forecast            provided.").strip()}
            """
 
 
@@ -244,5 +256,5 @@ async def shutdown_event() -> None:
 
 
 if __name__ == "__main__":
-    #mcp.run(transport="sse")
+    # mcp.run(transport="sse")
     asyncio.run(mcp.run_async(transport="streamable-http", host="0.0.0.0", port=8080))

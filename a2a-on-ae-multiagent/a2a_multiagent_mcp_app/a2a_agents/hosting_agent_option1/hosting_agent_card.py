@@ -17,9 +17,9 @@ hosting_agent_skill = AgentSkill(
     id="hosting_agent",
     name="Search hosting agent",
     # Detailed description helps clients understand when to use this skill
-    description='Helps with weather in city, or states, and cocktails',
-    tags=['host_agent'],
-    examples=['weather in LA, CA', 'List a random cocktail', 'What is a margarita?'],
+    description="Helps with weather in city, or states, and cocktails",
+    tags=["host_agent"],
+    examples=["weather in LA, CA", "List a random cocktail", "What is a margarita?"],
     # Optional: specify input/output modes
     # Default is text, but could include images, files, etc.
     input_modes=["text/plain"],

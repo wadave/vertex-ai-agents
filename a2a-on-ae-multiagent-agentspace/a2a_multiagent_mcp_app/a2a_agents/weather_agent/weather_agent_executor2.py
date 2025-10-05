@@ -1,3 +1,4 @@
+"""This module contains the agent executor for the weather agent."""
 import base64
 import json
 import logging
@@ -52,6 +53,7 @@ def decode_jwt_no_verify(token: str) -> dict:
     except Exception as e:
         raise ValueError(f"Failed to decode JWT payload: {e}") from e
 
+
 toolset_cache = {}
 
 # Set logging
@@ -80,16 +82,18 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
         try:
             # Prefer PyJWT decode if available
             if hasattr(jwt, "decode"):
-                decoded_payload = jwt.decode(id_token, options={"verify_signature": False})
+                decoded_payload = jwt.decode(
+                    id_token, options={"verify_signature": False}
+                )
             else:
                 decoded_payload = decode_jwt_no_verify(id_token)
         except Exception:
             # Fallback to local decoder
             decoded_payload = decode_jwt_no_verify(id_token)
         logging.debug("Decoded Token:", decoded_payload)
-        toolset_cache[mcp_toolset._tool_set_name][
-            "prev_used_token"
-        ] = f"Bearer {id_token}"
+        toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+            f"Bearer {id_token}"
+        )
         toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
             decoded_payload["exp"]
         )
@@ -117,15 +121,17 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             )
             try:
                 if hasattr(jwt, "decode"):
-                    decoded_payload = jwt.decode(id_token, options={"verify_signature": False})
+                    decoded_payload = jwt.decode(
+                        id_token, options={"verify_signature": False}
+                    )
                 else:
                     decoded_payload = decode_jwt_no_verify(id_token)
             except Exception:
                 decoded_payload = decode_jwt_no_verify(id_token)
             logging.debug("Decoded Token:", decoded_payload)
-            toolset_cache[mcp_toolset._tool_set_name][
-                "prev_used_token"
-            ] = f"Bearer {id_token}"
+            toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+                f"Bearer {id_token}"
+            )
             toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
                 decoded_payload["exp"]
             )
@@ -161,7 +167,6 @@ class MCPToolsetWithToolAccess(MCPToolset):
         self,
         readonly_context: Optional[ReadonlyContext] = None,
     ) -> List[BaseTool]:
-
         tools = None
 
         if "tools" not in toolset_cache[self._tool_set_name]:
@@ -209,7 +214,6 @@ class WeatherAgentExecutor(AgentExecutor):
         if self.agent is None:
             # --- Environment setup ---
             wea_url = os.getenv("MCP_SERVER_URL")
-
 
             weather_server_params = StreamableHTTPConnectionParams(
                 url=wea_url,
@@ -313,7 +317,6 @@ class WeatherAgentExecutor(AgentExecutor):
                     # Mark task as completed successfully
                     await updater.complete()
                     break
-
 
         except Exception as e:
             # Errors should never pass silently (Zen of Python)

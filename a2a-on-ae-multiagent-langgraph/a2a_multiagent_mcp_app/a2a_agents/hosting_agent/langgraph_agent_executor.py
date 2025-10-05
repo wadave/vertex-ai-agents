@@ -44,9 +44,9 @@ if not logger.hasHandlers():
     logging.basicConfig(level=logging.INFO)
 
 # Vertex AI configuration
-PROJECT_ID = os.getenv('PROJECT_ID', "dw-genai-dev")
-LOCATION = os.getenv('LOCATION', "us-central1")
-STORAGE = os.getenv('BUCKET', "dw-genai-dev-bucket")
+PROJECT_ID = os.getenv("PROJECT_ID", "dw-genai-dev")
+LOCATION = os.getenv("LOCATION", "us-central1")
+STORAGE = os.getenv("BUCKET", "dw-genai-dev-bucket")
 
 vertexai.init(
     project=PROJECT_ID,
@@ -155,7 +155,9 @@ class HostingAgentExecutor(AgentExecutor):
             # Stream through the graph execution
             iteration_count = 0
             try:
-                async for chunk in self.agent.astream({"messages": [("user", query)]}, config, stream_mode="values"):
+                async for chunk in self.agent.astream(
+                    {"messages": [("user", query)]}, config, stream_mode="values"
+                ):
                     iteration_count += 1
 
                     if DEBUG_MODE:
@@ -169,14 +171,25 @@ class HostingAgentExecutor(AgentExecutor):
                             message_type = type(last_message).__name__
 
                             # Check if this is an AIMessage without tool_calls (final response)
-                            if message_type == 'AIMessage' and (not hasattr(last_message, 'tool_calls') or not last_message.tool_calls):
-                                if hasattr(last_message, 'content') and last_message.content:
+                            if message_type == "AIMessage" and (
+                                not hasattr(last_message, "tool_calls")
+                                or not last_message.tool_calls
+                            ):
+                                if (
+                                    hasattr(last_message, "content")
+                                    and last_message.content
+                                ):
                                     final_response = str(last_message.content)
                                     if DEBUG_MODE:
-                                        logger.debug(f"AI final response: {final_response[:100]}")
+                                        logger.debug(
+                                            f"AI final response: {final_response[:100]}"
+                                        )
 
                             # Check if it's an AI message
-                            if hasattr(last_message, "content") and last_message.content:
+                            if (
+                                hasattr(last_message, "content")
+                                and last_message.content
+                            ):
                                 content = last_message.content
 
                                 # Check if content is structured (ResponseFormat from Pydantic)
@@ -184,25 +197,34 @@ class HostingAgentExecutor(AgentExecutor):
                                 if hasattr(content, "model_dump"):
                                     # It's a Pydantic model - convert to dict
                                     content_dict = content.model_dump()
-                                    final_response = content_dict.get("message", str(content_dict))
+                                    final_response = content_dict.get(
+                                        "message", str(content_dict)
+                                    )
                                     status = content_dict.get("status", "completed")
-                                    needs_input = (status == "input_required")
+                                    needs_input = status == "input_required"
                                 elif isinstance(content, dict):
                                     # Already a dict with status field
-                                    final_response = content.get("message", str(content))
+                                    final_response = content.get(
+                                        "message", str(content)
+                                    )
                                     status = content.get("status", "completed")
-                                    needs_input = (status == "input_required")
+                                    needs_input = status == "input_required"
                                 else:
                                     # Plain text response
                                     final_response = content
 
                                 # Check state for input requirement
-                                if "needs_user_input" in chunk and chunk["needs_user_input"]:
+                                if (
+                                    "needs_user_input" in chunk
+                                    and chunk["needs_user_input"]
+                                ):
                                     needs_input = True
 
             except GraphRecursionError as e:
                 # Handle recursion limit gracefully
-                logger.warning(f"Recursion limit reached after {iteration_count} iterations: {e}")
+                logger.warning(
+                    f"Recursion limit reached after {iteration_count} iterations: {e}"
+                )
                 final_response = "I've reached the maximum number of steps for this task. The query may be too complex or require a different approach. Please try rephrasing your request or breaking it into smaller steps."
                 needs_input = False
 
@@ -219,18 +241,22 @@ class HostingAgentExecutor(AgentExecutor):
                 )
             elif final_response:
                 # Extract text response from the final message
-                response_text = final_response if isinstance(final_response, str) else str(final_response)
+                response_text = (
+                    final_response
+                    if isinstance(final_response, str)
+                    else str(final_response)
+                )
 
                 await updater.add_artifact(
                     [Part(root=TextPart(text=response_text))],
-                    name='response',
+                    name="response",
                 )
                 await updater.complete()
             else:
                 raise ValueError("No response received from agent")
 
         except Exception as e:
-            logger.error(f'An error occurred while streaming the response: {e}')
+            logger.error(f"An error occurred while streaming the response: {e}")
             raise ServerError(error=InternalError()) from e
 
     def _validate_request(self, context: RequestContext) -> bool:

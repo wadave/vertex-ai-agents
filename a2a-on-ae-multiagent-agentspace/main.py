@@ -1,3 +1,5 @@
+"""This is the main module."""
+
 def main():
     print("Hello from a2a-demo!")
 

@@ -27,9 +27,9 @@ from agent import CocktailAgent
 
 
 # Replace these as appropriate
-PROJECT_ID = os.getenv('PROJECT_ID', "dw-genai-dev")
-LOCATION = os.getenv('LOCATION', "us-central1")
-STORAGE = os.getenv('BUCKET', "dw-genai-dev-bucket")
+PROJECT_ID = os.getenv("PROJECT_ID", "dw-genai-dev")
+LOCATION = os.getenv("LOCATION", "us-central1")
+STORAGE = os.getenv("BUCKET", "dw-genai-dev-bucket")
 
 vertexai.init(
     project=PROJECT_ID,
@@ -60,11 +60,13 @@ class CocktailAgentExecutor(AgentExecutor):
             # --- Environment setup ---
             url = os.environ.get(
                 "MCP_SERVER_URL",
-                'https://cocktail-remote-mcp-server-496235138247.us-central1.run.app/mcp/'
+                "https://cocktail-remote-mcp-server-496235138247.us-central1.run.app/mcp/",
             )
 
             def google_auth_client_factory(
-                headers=None, timeout=None, auth=None  # noqa: ARG001
+                headers=None,
+                timeout=None,
+                auth=None,  # noqa: ARG001
             ):
                 """Factory that creates httpx.AsyncClient with Google Auth."""
                 auth_request = AuthRequest()
@@ -73,7 +75,7 @@ class CocktailAgentExecutor(AgentExecutor):
                 # Merge custom headers with auth headers
                 client_headers = {
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {id_token}"
+                    "Authorization": f"Bearer {id_token}",
                 }
                 if headers:
                     client_headers.update(headers)
@@ -98,17 +100,16 @@ class CocktailAgentExecutor(AgentExecutor):
 
             # Create the actual agent
             tool_count = len(mcp_tools) if mcp_tools else "no"
-            logger.info(f'Initializing AgentExecutor with {tool_count} MCP tools.')
+            logger.info(f"Initializing AgentExecutor with {tool_count} MCP tools.")
 
             self.agent = CocktailAgent(mcp_tools=mcp_tools)
-            logger.info('CocktailAgent initialized successfully.')
+            logger.info("CocktailAgent initialized successfully.")
 
     async def execute(
         self,
         context: RequestContext,
         event_queue: EventQueue,
     ) -> None:
-
         if self.agent is None:
             await self._init_agent()
 
@@ -124,14 +125,14 @@ class CocktailAgentExecutor(AgentExecutor):
         updater = TaskUpdater(event_queue, task.id, task.context_id)
         try:
             async for item in self.agent.stream(query, task.context_id):
-                is_task_complete = item['is_task_complete']
-                require_user_input = item['require_user_input']
+                is_task_complete = item["is_task_complete"]
+                require_user_input = item["require_user_input"]
 
                 if not is_task_complete and not require_user_input:
                     await updater.update_status(
                         TaskState.working,
                         new_agent_text_message(
-                            item['content'],
+                            item["content"],
                             task.context_id,
                             task.id,
                         ),
@@ -140,7 +141,7 @@ class CocktailAgentExecutor(AgentExecutor):
                     await updater.update_status(
                         TaskState.input_required,
                         new_agent_text_message(
-                            item['content'],
+                            item["content"],
                             task.context_id,
                             task.id,
                         ),
@@ -149,14 +150,14 @@ class CocktailAgentExecutor(AgentExecutor):
                     break
                 else:
                     await updater.add_artifact(
-                        [Part(root=TextPart(text=item['content']))],
-                        name='conversion_result',
+                        [Part(root=TextPart(text=item["content"]))],
+                        name="conversion_result",
                     )
                     await updater.complete()
                     break
 
         except Exception as e:
-            logger.error(f'An error occurred while streaming the response: {e}')
+            logger.error(f"An error occurred while streaming the response: {e}")
             raise ServerError(error=InternalError()) from e
 
     def _validate_request(self, context: RequestContext) -> bool:  # noqa: ARG002

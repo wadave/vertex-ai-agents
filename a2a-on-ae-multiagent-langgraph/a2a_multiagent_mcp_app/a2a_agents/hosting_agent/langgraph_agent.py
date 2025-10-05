@@ -125,7 +125,7 @@ class HostingAgent:
         Returns:
             CompiledStateGraph that can be used for streaming execution.
         """
-        GOOGLE_GENAI_MODEL = os.getenv('GOOGLE_GENAI_MODEL', "gemini-2.5-flash")
+        GOOGLE_GENAI_MODEL = os.getenv("GOOGLE_GENAI_MODEL", "gemini-2.5-flash")
         model = ChatVertexAI(
             model=GOOGLE_GENAI_MODEL,
             temperature=0,
@@ -156,7 +156,7 @@ class HostingAgent:
             last_message = messages[-1]
 
             # If there are tool calls, go to tools
-            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+            if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                 return "tools"
             # Otherwise, end
             return END
@@ -184,7 +184,7 @@ class HostingAgent:
         agents_list = self.agents if self.agents else "Loading agents..."
 
         # Get current active agent if any
-        current_agent = self.check_state(state).get('active_agent', 'None')
+        current_agent = self.check_state(state).get("active_agent", "None")
 
         if DEBUG_MODE:
             logger.debug(
@@ -224,7 +224,7 @@ User: "margarita recipe" → You: Use send_message tool with Cocktail Agent ONCE
             and state["session_active"]
             and "agent" in state
         ):
-            return {"active_agent": f'{state["agent"]}'}
+            return {"active_agent": f"{state['agent']}"}
         return {"active_agent": "None"}
 
     def list_remote_agents(self) -> str:

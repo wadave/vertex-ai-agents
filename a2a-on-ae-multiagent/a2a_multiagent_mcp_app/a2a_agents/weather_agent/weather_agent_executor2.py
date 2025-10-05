@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, List, NoReturn, Optional
+from typing import List, NoReturn, Optional
 
 import google.auth.transport.requests
 import google.oauth2.id_token
@@ -28,7 +28,6 @@ from google.adk.tools.mcp_tool.mcp_toolset import (
     MCPToolset,
     StreamableHTTPConnectionParams,
 )
-from google.auth import exceptions as google_auth_exceptions
 from google.genai import types
 
 
@@ -51,6 +50,7 @@ def decode_jwt_no_verify(token: str) -> dict:
         return json.loads(decoded)
     except Exception as e:
         raise ValueError(f"Failed to decode JWT payload: {e}") from e
+
 
 toolset_cache = {}
 
@@ -80,16 +80,18 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
         try:
             # Prefer PyJWT decode if available
             if hasattr(jwt, "decode"):
-                decoded_payload = jwt.decode(id_token, options={"verify_signature": False})
+                decoded_payload = jwt.decode(
+                    id_token, options={"verify_signature": False}
+                )
             else:
                 decoded_payload = decode_jwt_no_verify(id_token)
         except Exception:
             # Fallback to local decoder
             decoded_payload = decode_jwt_no_verify(id_token)
         logging.debug("Decoded Token:", decoded_payload)
-        toolset_cache[mcp_toolset._tool_set_name][
-            "prev_used_token"
-        ] = f"Bearer {id_token}"
+        toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+            f"Bearer {id_token}"
+        )
         toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
             decoded_payload["exp"]
         )
@@ -107,7 +109,7 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             time_after_threshold_minutes
             >= toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"]
         ):
-            logging.info(f"Getting a new token and updating the cache")
+            logging.info("Getting a new token and updating the cache")
             id_token = get_id_token(
                 os.environ.get("MCP_SERVER_URL", "http://localhost:8080")
             )
@@ -117,15 +119,17 @@ def get_auth_token(callback_context: CallbackContext) -> Optional[types.Content]
             )
             try:
                 if hasattr(jwt, "decode"):
-                    decoded_payload = jwt.decode(id_token, options={"verify_signature": False})
+                    decoded_payload = jwt.decode(
+                        id_token, options={"verify_signature": False}
+                    )
                 else:
                     decoded_payload = decode_jwt_no_verify(id_token)
             except Exception:
                 decoded_payload = decode_jwt_no_verify(id_token)
             logging.debug("Decoded Token:", decoded_payload)
-            toolset_cache[mcp_toolset._tool_set_name][
-                "prev_used_token"
-            ] = f"Bearer {id_token}"
+            toolset_cache[mcp_toolset._tool_set_name]["prev_used_token"] = (
+                f"Bearer {id_token}"
+            )
             toolset_cache[mcp_toolset._tool_set_name]["token_expiration_time"] = (
                 decoded_payload["exp"]
             )
@@ -161,7 +165,6 @@ class MCPToolsetWithToolAccess(MCPToolset):
         self,
         readonly_context: Optional[ReadonlyContext] = None,
     ) -> List[BaseTool]:
-
         tools = None
 
         if "tools" not in toolset_cache[self._tool_set_name]:
@@ -208,13 +211,6 @@ class WeatherAgentExecutor(AgentExecutor):
         """
         if self.agent is None:
             # --- Environment setup ---
-            wea_url = os.getenv("MCP_SERVER_URL")
-
-
-            weather_server_params = StreamableHTTPConnectionParams(
-                url=wea_url,
-                timeout=60,
-            )
 
             # Create the actual agent
             self.agent = LlmAgent(
@@ -313,7 +309,6 @@ class WeatherAgentExecutor(AgentExecutor):
                     # Mark task as completed successfully
                     await updater.complete()
                     break
-
 
         except Exception as e:
             # Errors should never pass silently (Zen of Python)

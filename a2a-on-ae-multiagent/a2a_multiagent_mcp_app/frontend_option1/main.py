@@ -2,7 +2,6 @@
 import asyncio
 import os
 import traceback
-from pprint import pformat
 from typing import AsyncIterator, List
 
 import gradio as gr
@@ -14,10 +13,8 @@ from a2a.types import (
     Part,
     Role,
     TaskState,
-    TaskQueryParams,
     TextPart,
     TransportProtocol,
-    UnsupportedOperationError,
 )
 from dotenv import load_dotenv
 from google.auth import default
@@ -29,7 +26,7 @@ load_dotenv()
 PROJECT_ID = os.getenv("PROJECT_ID")
 PROJECT_NUMBER = os.getenv("PROJECT_NUMBER")
 AGENT_ENGINE_ID = os.getenv("AGENT_ENGINE_ID")
-LOCATION = os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1')
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 
 # Initialize Vertex AI session
@@ -88,10 +85,10 @@ async def get_response_from_agent(
     history: List[gr.ChatMessage],
 ) -> AsyncIterator[gr.ChatMessage]:
     """Get response from host agent."""
-    
+
     a2a_client: Client = None  # Define client for the finally block
-    httpx_client: httpx.AsyncClient = None # Define httpx_client for the finally block
-    
+    httpx_client: httpx.AsyncClient = None  # Define httpx_client for the finally block
+
     try:
         # --- 1. Get Agent Card ---
         print("Fetching agent card...")
@@ -103,13 +100,13 @@ async def get_response_from_agent(
             timeout=120,
             auth=GoogleAuth(),
         )
-        
+
         # --- 3. Create A2A Client ---
         factory = ClientFactory(
             ClientConfig(
                 supported_transports=[TransportProtocol.http_json],
                 use_client_preference=True,
-                httpx_client=httpx_client, # Pass the authenticated client
+                httpx_client=httpx_client,  # Pass the authenticated client
             )
         )
         a2a_client = factory.create(remote_a2a_agent_card)
@@ -119,19 +116,19 @@ async def get_response_from_agent(
         message = Message(
             message_id=f"message-{os.urandom(8).hex()}",
             role=Role.user,
-            parts=[Part(root=TextPart(text=query))], # Simplified: just pass the query
+            parts=[Part(root=TextPart(text=query))],  # Simplified: just pass the query
         )
 
         # --- 5. Send Message and Stream Response ---
         print(f"Sending message to agent: {query}")
         response_stream = a2a_client.send_message(message)
-        
+
         final_result_text = None
 
         # Iterate over the async generator which yields task status updates
         async for response_chunk in response_stream:
             task_object = response_chunk[0]  # Task object is the first element
-            
+
             print(f"Received task update. Status: {task_object.status.state}")
 
             # Wait for the task to complete
@@ -140,7 +137,9 @@ async def get_response_from_agent(
                 if hasattr(task_object, "artifacts") and task_object.artifacts:
                     for artifact in task_object.artifacts:
                         # Find the first text part in the artifacts
-                        if artifact.parts and isinstance(artifact.parts[0].root, TextPart):
+                        if artifact.parts and isinstance(
+                            artifact.parts[0].root, TextPart
+                        ):
                             final_result_text = artifact.parts[0].root.text
                             print(f"Found artifact text: {final_result_text[:50]}...")
                             break  # Stop looking at artifacts
@@ -159,7 +158,10 @@ async def get_response_from_agent(
             yield gr.ChatMessage(role="assistant", content=final_result_text)
         else:
             print("Task finished but no text artifact was found.")
-            yield gr.ChatMessage(role="assistant", content="I processed your request but found no text response.")
+            yield gr.ChatMessage(
+                role="assistant",
+                content="I processed your request but found no text response.",
+            )
 
     except Exception as e:
         print(f"Error in get_response_from_agent (Type: {type(e)}): {e}")
@@ -175,7 +177,7 @@ async def get_response_from_agent(
             await a2a_client.close()
             print("A2A client closed.")
         elif httpx_client:
-             # Fallback if a2a_client creation failed but httpx_client was made
+            # Fallback if a2a_client creation failed but httpx_client was made
             await httpx_client.aclose()
             print("HTTPX client closed.")
 
@@ -195,9 +197,9 @@ async def main():
                 show_download_button=False,
                 container=False,
                 show_fullscreen_button=False,
-                elem_classes=["centered-image"] # Requires custom CSS
+                elem_classes=["centered-image"],  # Requires custom CSS
             )
-        
+
         gr.ChatInterface(
             get_response_from_agent,
             title="A2A Host Agent",
@@ -217,6 +219,5 @@ if __name__ == "__main__":
     if not os.path.exists("static"):
         os.makedirs("static")
         print("Created 'static' directory. Please add your 'a2a.png' image there.")
-    
+
     asyncio.run(main())
-    
