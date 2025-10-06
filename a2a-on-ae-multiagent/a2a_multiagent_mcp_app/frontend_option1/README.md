@@ -42,7 +42,7 @@ In your Cloud Shell, execute the following commands to set up your environment v
 
 ```bash
 # Define a name for your Cloud Run service
-export SERVICE_NAME=\'a2a-frontend'
+export SERVICE_NAME=\'a2a-server-frontend'
 
 # Specify the Google Cloud region for deployment
 export LOCATION=\'us-central1'
@@ -71,7 +71,7 @@ gcloud run deploy $SERVICE_NAME \
   --source . \
   --region $LOCATION \
   --project $PROJECT_ID \
-  --memory 4G \
+  --memory 2G \
   --no-allow-unauthenticated \
   --update-env-vars=PROJECT_ID=$PROJECT_ID,AGENT_ENGINE_ID=$AGENT_ENGINE_ID,PROJECT_NUMBER=$PROJECT_NUMBER,
 ```

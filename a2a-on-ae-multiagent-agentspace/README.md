@@ -76,25 +76,22 @@ Ensure your project follows this structure:
 
 ```bash
 .
+.
 ├── a2a_multiagent_mcp_app
 │   ├── a2a_agents
-│   │   ├── cocktail_agent
-│   │   ├── hosting_agent_option1
 │   │   ├── hosting_agent_option2
-│   │   └── weather_agent
-│   ├── frontend_option2
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   ├── pyproject.toml
-│   │   ├── README.md
-│   │   ├── static
-│   │   └── uv.lock
-│   └── mcp_servers
-│       ├── cocktail_mcp_server
-│       └── weather_mcp_server
+│   │   └── register_agent_to_agentspace
+│   └── frontend_option2
+│       ├── Dockerfile
+│       ├── main.py
+│       ├── pyproject.toml
+│       ├── README.md
+│       ├── static
+│       └── uv.lock
 ├── asset
-│   ├── a2a_ae_diagram.png
+│   ├── a2a_adk_diagram.png
 │   └── screenshot.png
+├── LICENSE
 ├── main.py
 ├── pyproject.toml
 ├── README.md
@@ -103,7 +100,7 @@ Ensure your project follows this structure:
 
 ### 2. Deploy MCP servers
 
-Navigate to the `a2a_multiagent_mcp_app/mcp_servers` sub directories and follow the `README.md` file to set up the MCP servers on Cloud Run.
+Navigate to the parent directory and then navigate to `mcp_servers` sub directories and follow the `README.md` file to set up the MCP servers on Cloud Run.
 
 ### 3. Deploy A2A Agents
 

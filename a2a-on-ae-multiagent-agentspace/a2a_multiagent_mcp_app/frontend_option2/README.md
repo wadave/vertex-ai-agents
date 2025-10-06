@@ -17,7 +17,7 @@ uv run main.py
 In Cloud Shell, execute the following command:
 ```bash
 # Define a name for your Cloud Run service
-export SERVICE_NAME='adk-frontend'
+export SERVICE_NAME='ae-server-frontend'
 
 # Specify the Google Cloud region for deployment (ensure it supports required services)
 export LOCATION='us-central1'
@@ -40,7 +40,7 @@ gcloud run deploy $SERVICE_NAME \
   --source . \
   --region $LOCATION \
   --project $PROJECT_ID \
-  --memory 4G \
+  --memory 2G \
   --no-allow-unauthenticated \
   --update-env-vars=PROJECT_ID=$PROJECT_ID,AGENT_ENGINE_ID=$AGENT_ENGINE_ID,PROJECT_NUMBER=$PROJECT_NUMBER,
 ```
