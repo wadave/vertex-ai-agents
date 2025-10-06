@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Base Orchestrator Agent Executor for LangGraph-based A2A agents."""
+
 import logging
 import os
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import httpx
 import vertexai
-from dotenv import load_dotenv
 from google.auth import default
 from google.auth.transport.requests import Request as AuthRequest
 from langgraph.errors import GraphRecursionError
@@ -34,28 +37,14 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
-from langgraph_agent import get_root_agent
 
-load_dotenv()
+if TYPE_CHECKING:
+    from langgraph.graph.graph import CompiledGraph
 
-# Configure logging
+
 logger = logging.getLogger(__name__)
 if not logger.hasHandlers():
     logging.basicConfig(level=logging.INFO)
-
-# Vertex AI configuration
-PROJECT_ID = os.getenv("PROJECT_ID", "dw-genai-dev")
-LOCATION = os.getenv("LOCATION", "us-central1")
-STORAGE = os.getenv("BUCKET", "dw-genai-dev-bucket")
-
-vertexai.init(
-    project=PROJECT_ID,
-    location=LOCATION,
-    staging_bucket=f"gs://{STORAGE}",
-)
-
-# Debug mode from environment
-DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
 
 class GoogleAuth(httpx.Auth):
@@ -77,8 +66,8 @@ class GoogleAuth(httpx.Auth):
         yield request
 
 
-class HostingAgentExecutor(AgentExecutor):
-    """Agent Executor that bridges A2A protocol with LangGraph agent.
+class LanggraphBaseOrchestratorAgentExecutor(AgentExecutor, ABC):
+    """Base class for LangGraph orchestrator agent executors.
 
     The executor handles:
     1. Protocol translation (A2A messages to/from LangGraph format)
@@ -90,6 +79,44 @@ class HostingAgentExecutor(AgentExecutor):
     def __init__(self) -> None:
         """Initialize with lazy loading pattern."""
         self.agent = None
+        self.debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
+        self._init_vertexai()
+
+    def _init_vertexai(self) -> None:
+        """Initialize Vertex AI with project configuration."""
+        project_id = os.getenv("PROJECT_ID", "dw-genai-dev")
+        location = os.getenv("LOCATION", "us-central1")
+        storage = os.getenv("BUCKET", "dw-genai-dev-bucket")
+
+        vertexai.init(
+            project=project_id,
+            location=location,
+            staging_bucket=f"gs://{storage}",
+        )
+
+    @abstractmethod
+    async def create_orchestrator_agent(
+        self, httpx_client: httpx.AsyncClient
+    ) -> "CompiledGraph":
+        """Create and initialize the orchestrator agent.
+
+        Args:
+            httpx_client: HTTP client with authentication
+
+        Returns:
+            A compiled LangGraph agent ready for streaming execution
+        """
+        pass
+
+    def get_recursion_limit(self) -> int:
+        """Get the recursion limit for the graph execution.
+
+        Override this method to customize the recursion limit.
+
+        Returns:
+            int: The recursion limit (default: 10)
+        """
+        return 10
 
     async def _init_agent(self) -> None:
         """Lazy initialization of agent resources.
@@ -103,7 +130,7 @@ class HostingAgentExecutor(AgentExecutor):
                 auth=GoogleAuth(),
             )
             httpx_client.headers["Content-Type"] = "application/json"
-            self.agent = await get_root_agent(httpx_client)
+            self.agent = await self.create_orchestrator_agent(httpx_client)
 
     async def execute(
         self,
@@ -146,7 +173,7 @@ class HostingAgentExecutor(AgentExecutor):
             # Build the config with the thread_id for conversation context
             config = {
                 "configurable": {"thread_id": task.context_id},
-                "recursion_limit": 10,  # Allow up to 10 iterations for multi-turn conversations
+                "recursion_limit": self.get_recursion_limit(),
             }
 
             final_response = None
@@ -160,7 +187,7 @@ class HostingAgentExecutor(AgentExecutor):
                 ):
                     iteration_count += 1
 
-                    if DEBUG_MODE:
+                    if self.debug_mode:
                         logger.debug(f"Iteration {iteration_count}")
 
                     # Each chunk contains the full state with messages
@@ -180,7 +207,7 @@ class HostingAgentExecutor(AgentExecutor):
                                     and last_message.content
                                 ):
                                     final_response = str(last_message.content)
-                                    if DEBUG_MODE:
+                                    if self.debug_mode:
                                         logger.debug(
                                             f"AI final response: {final_response[:100]}"
                                         )
@@ -225,7 +252,7 @@ class HostingAgentExecutor(AgentExecutor):
                 logger.warning(
                     f"Recursion limit reached after {iteration_count} iterations: {e}"
                 )
-                final_response = "I've reached the maximum number of steps for this task. The query may be too complex or require a different approach. Please try rephrasing your request or breaking it into smaller steps."
+                final_response = self.get_recursion_error_message()
                 needs_input = False
 
             # Process the final result
@@ -259,10 +286,36 @@ class HostingAgentExecutor(AgentExecutor):
             logger.error(f"An error occurred while streaming the response: {e}")
             raise ServerError(error=InternalError()) from e
 
+    def get_recursion_error_message(self) -> str:
+        """Get the error message to display when recursion limit is reached.
+
+        Override this method to customize the error message.
+
+        Returns:
+            str: The error message
+        """
+        return (
+            "I've reached the maximum number of steps for this task. "
+            "The query may be too complex or require a different approach. "
+            "Please try rephrasing your request or breaking it into smaller steps."
+        )
+
     def _validate_request(self, context: RequestContext) -> bool:
-        """Validate incoming request (not implemented)."""
+        """Validate incoming request (not implemented).
+
+        Args:
+            context: Request context to validate
+
+        Returns:
+            bool: True if validation failed, False otherwise
+        """
         return False
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        """Cancel execution (not supported)."""
+        """Cancel execution (not supported).
+
+        Args:
+            context: Request context
+            event_queue: Event queue
+        """
         raise ServerError(error=UnsupportedOperationError())

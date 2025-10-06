@@ -17,8 +17,8 @@ import logging
 from typing import Dict
 from dotenv import load_dotenv
 
-from commons.agent_configs import COCKTAIL_AGENT_CONFIG
-from commons.adk_base_mcp_agent_executor import AdkBaseMcpAgentExecutor
+from common.agent_configs import COCKTAIL_AGENT_CONFIG
+from common.adk_base_mcp_agent_executor import AdkBaseMcpAgentExecutor
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)

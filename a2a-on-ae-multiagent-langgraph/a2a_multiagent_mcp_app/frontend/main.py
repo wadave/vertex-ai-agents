@@ -24,10 +24,10 @@ The main components are:
   a message to the agent and processing its response.
 - A `main` function that sets up and launches the Gradio application.
 """
+
 import asyncio
 import os
 import traceback
-from pprint import pformat
 from typing import AsyncIterator, List
 
 import gradio as gr
@@ -39,10 +39,8 @@ from a2a.types import (
     Part,
     Role,
     TaskState,
-    TaskQueryParams,
     TextPart,
     TransportProtocol,
-    UnsupportedOperationError,
 )
 from dotenv import load_dotenv
 from google.auth import default

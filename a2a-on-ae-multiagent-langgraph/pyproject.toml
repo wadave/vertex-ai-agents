@@ -1,5 +1,5 @@
 [project]
-name = "a2a-on-ae-multiagent"
+name = "a2a-on-ae-multiagent-langgraph"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -16,7 +16,12 @@ dependencies = [
     "google-genai>=1.36.0",
     "gradio>=5.46.1",
     "ipykernel>=6.30.1",
+    "langchain-google-genai>=2.1.12",
+    "langchain-google-vertexai>=2.1.2",
+    "langchain-mcp-adapters>=0.1.11",
+    "langgraph>=0.6.8",
     "nbqa>=1.9.1",
+    "pip>=25.2",
 ]
 
 

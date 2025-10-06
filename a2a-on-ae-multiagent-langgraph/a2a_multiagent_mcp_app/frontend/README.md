@@ -72,7 +72,7 @@ gcloud run deploy $SERVICE_NAME \
   --source . \
   --region $LOCATION \
   --project $PROJECT_ID \
-  --memory 4G \
+  --memory 2G \
   --no-allow-unauthenticated \
   --update-env-vars=PROJECT_ID=$PROJECT_ID,AGENT_ENGINE_ID=$AGENT_ENGINE_ID,PROJECT_NUMBER=$PROJECT_NUMBER,
 ```
