@@ -78,10 +78,17 @@ Ensure your project follows this structure:
 ├── a2a_multiagent_mcp_app
 │   ├── a2a_agents
 │   │   ├── cocktail_agent
-│   │   ├── hosting_agent_option1
-│   │   ├── hosting_agent_option2
+│   │   ├── commons
+│   │   ├── deploy_cocktail_agent.ipynb
+│   │   ├── deploy_hosting_agent.ipynb
+│   │   ├── deploy_weather_agent.ipynb
+│   │   ├── hosting_agent
+│   │   ├── __init__.py
+│   │   ├── pyproject.toml
+│   │   ├── README.md
+│   │   ├── uv.lock
 │   │   └── weather_agent
-│   ├── frontend_option1
+│   └── frontend_option1
 │       ├── Dockerfile
 │       ├── main.py
 │       ├── pyproject.toml
@@ -91,7 +98,7 @@ Ensure your project follows this structure:
 ├── asset
 │   ├── a2a_ae_diagram.png
 │   └── screenshot.png
-├── main.py
+├── LICENSE
 ├── pyproject.toml
 ├── README.md
 └── uv.lock
@@ -99,11 +106,11 @@ Ensure your project follows this structure:
 
 ### 2. Deploy MCP servers
 
-Navigate to the `a2a_multiagent_mcp_app/mcp_servers` sub directories and follow the `README.md` file to set up the MCP servers on Cloud Run.
+Navigate to the parent directory and go to the `mcp_servers` sub directories and follow the `README.md` file to set up the MCP servers on Cloud Run.
 
 ### 3. Deploy A2A Agents
 
-Navigate to the `a2a_multiagent_mcp_app/a2a_agents` sub directories and follow the `README.md` file to set up the A2A agents on Agent Engine.
+Navigate to the `a2a_multiagent_mcp_app/a2a_agents` directory and follow the `README.md` file to set up the A2A agents on Agent Engine.
 
 ### 4. Run the Application
 
@@ -119,4 +126,4 @@ Developers are responsible for implementing appropriate security measures, such 
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [License](LICENSE).

@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Author: Dave Wang
 import logging
 from typing import NoReturn
 import httpx
@@ -24,7 +38,7 @@ from a2a.utils.errors import ServerError
 from google.auth import default
 from google.auth.transport.requests import Request as AuthRequest
 
-from hosting_agent import get_root_agent
+from commons.adk_orchestrator_agent import get_orchestrator_agent
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
@@ -60,7 +74,7 @@ class GoogleAuth(httpx.Auth):
         yield request
 
 
-class HostingAgentExecutor(AgentExecutor):
+class AdkOrchestratorAgentExecutor(AgentExecutor):
     """Agent Executor that bridges A2A protocol with our ADK agent.
 
     The executor handles:
@@ -70,8 +84,13 @@ class HostingAgentExecutor(AgentExecutor):
     4. Error handling and recovery
     """
 
-    def __init__(self) -> None:
-        """Initialize with lazy loading pattern."""
+    def __init__(self, remote_agent_addresses: list[str]) -> None:
+        """Initialize with lazy loading pattern.
+
+        Args:
+            remote_agent_addresses: A list of remote agent addresses.
+        """
+        self.remote_agent_addresses = remote_agent_addresses
         self.agent = None
         self.runner = None
 
@@ -88,7 +107,10 @@ class HostingAgentExecutor(AgentExecutor):
             )
             httpx_client.headers["Content-Type"] = "application/json"
             # Create the actual agent
-            self.agent = await get_root_agent(httpx_client)
+            self.agent = await get_orchestrator_agent(
+                remote_agent_addresses=self.remote_agent_addresses,
+                httpx_client=httpx_client
+            )
 
             # The Runner orchestrates the agent execution
             # It manages the LLM calls, tool execution, and state

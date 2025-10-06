@@ -12,21 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Author: Dave Wang
-
-import logging
-from typing import Dict
-from dotenv import load_dotenv
-
-from commons.agent_configs import COCKTAIL_AGENT_CONFIG
-from commons.adk_base_mcp_agent_executor import AdkBaseMcpAgentExecutor
-
-# Set logging
-logging.getLogger().setLevel(logging.INFO)
-load_dotenv()
-
-
-class CocktailAgentExecutor(AdkBaseMcpAgentExecutor):
-    """Agent Executor for cocktail-related queries using MCP tools."""
-    def get_agent_config(self) -> Dict:
-        """Return cocktail agent configuration."""
-        return COCKTAIL_AGENT_CONFIG
+"""A2A Agents package."""

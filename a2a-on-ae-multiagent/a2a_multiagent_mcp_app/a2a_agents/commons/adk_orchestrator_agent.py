@@ -1,9 +1,22 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Author: Dave Wang
 import asyncio
 import base64
 import json
 import uuid
 import httpx
-import os
 from dotenv import load_dotenv
 
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
@@ -25,13 +38,13 @@ from google.adk.agents.readonly_context import ReadonlyContext
 # from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
-from remote_connection import RemoteAgentConnections, TaskUpdateCallback
+from commons.remote_connection import RemoteAgentConnections, TaskUpdateCallback
 
-load_dotenv()
+load_dotenv() 
 
 
-class HostingAgent:
-    """The host agent.
+class AdkOrchestratorAgent:
+    """The orchestrator agent.
 
     This is the agent responsible for choosing which remote agents to send
     tasks to and coordinate their work.
@@ -43,7 +56,7 @@ class HostingAgent:
         http_client: httpx.AsyncClient,
         task_callback: TaskUpdateCallback | None = None,
     ):
-        """Initializes the HostingAgent.
+        """Initializes the OrchestratorAgent.
 
         Args:
             remote_agent_addresses: A list of remote agent addresses.
@@ -109,10 +122,10 @@ class HostingAgent:
         self.agents = "\n".join(agent_info)
 
     def create_agent(self) -> Agent:
-        """Creates the hosting agent."""
+        """Creates the orchestrator agent."""
         return Agent(
             model="gemini-2.5-flash",
-            name="host_agent",
+            name="orchestrator_agent",
             instruction=self.root_instruction,
             before_model_callback=self.before_model_callback,
             description=(
@@ -145,8 +158,7 @@ Focus on the most recent parts of the conversation primarily.
 Agents:
 {self.agents}
 
-Current agent: {current_agent["active_agent"]}
-"""
+Current agent: {current_agent["active_agent"]} """
 
     def check_state(self, context: ReadonlyContext):
         """Checks the state of the agent.
@@ -191,7 +203,10 @@ Current agent: {current_agent["active_agent"]}
         return remote_agent_info
 
     async def send_message(
-        self, agent_name: str, message: str, tool_context: ToolContext
+        self,
+        agent_name: str,
+        message: str,
+        tool_context: ToolContext,
     ):
         """Sends a task either streaming (if supported) or non-streaming.
 
@@ -309,28 +324,21 @@ async def convert_part(part: Part, tool_context: ToolContext):
     return f"Unknown type: {part.kind}"
 
 
-async def get_root_agent(httpx_client: httpx.AsyncClient | None = None) -> HostingAgent:
-    """Gets the root agent.
+async def get_orchestrator_agent(
+    remote_agent_addresses: list[str],
+    httpx_client: httpx.AsyncClient | None = None
+) -> AdkOrchestratorAgent:
+    """Gets the orchestrator agent.
 
     Args:
+        remote_agent_addresses: A list of remote agent addresses.
         httpx_client: An httpx client.
 
     Returns:
-        The root agent.
+        The orchestrator agent.
     """
-    # httpx_client = httpx.AsyncClient(
-    #         timeout=120,
-    #         headers={
-    #             "Authorization": f"Bearer {bearer_token}",
-    #             "Content-Type": "application/json",
-    #         },
-    #     )
-
-    root_agent = HostingAgent(
-        remote_agent_addresses=[
-            os.getenv("CT_AGENT_URL", "http://localhost:10002"),
-            os.getenv("WEA_AGENT_URL", "http://localhost:10001"),
-        ],
+    orchestrator_agent = AdkOrchestratorAgent(
+        remote_agent_addresses=remote_agent_addresses,
         http_client=httpx_client,
     ).create_agent()
-    return root_agent
+    return orchestrator_agent

@@ -1,10 +1,28 @@
-"""This module contains the agent executor for the cocktail agent."""
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Author: Dave Wang
 import logging
-import os
 import time
+from abc import ABC, abstractmethod
 from typing import Dict, NoReturn
 
-from dotenv import load_dotenv
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.events import EventQueue
+from a2a.server.tasks import TaskUpdater
+from a2a.types import Role, TaskState, TextPart, UnsupportedOperationError
+from a2a.utils import new_agent_text_message
+from a2a.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
@@ -18,24 +36,6 @@ from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport import requests as google_auth_requests
 from google.genai import types
 from google.oauth2 import id_token as google_id_token
-
-# A2A
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
-from a2a.server.tasks import TaskUpdater
-from a2a.types import (
-    Role,
-    TaskState,
-    TextPart,
-    UnsupportedOperationError,
-)
-from a2a.utils import new_agent_text_message
-from a2a.utils.errors import ServerError
-
-
-# Set logging
-logging.getLogger().setLevel(logging.INFO)
-load_dotenv()
 
 
 def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
@@ -131,14 +131,15 @@ class TokenManager:
         return {"Authorization": self._token} if self._token else {}
 
 
-class CocktailAgentExecutor(AgentExecutor):
-    """Agent Executor that bridges A2A protocol with our ADK agent.
+class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
+    """Base Agent Executor that bridges A2A protocol with ADK agents using MCP tools.
 
     The executor handles:
     1. Protocol translation (A2A messages to/from agent format)
     2. Task lifecycle management (submitted -> working -> completed)
     3. Session management for multi-turn conversations
     4. Error handling and recovery
+    5. MCP authentication and token management
     """
 
     def __init__(self) -> None:
@@ -147,34 +148,53 @@ class CocktailAgentExecutor(AgentExecutor):
         self.runner = None
         self.token_manager = None
 
+    @abstractmethod
+    def get_agent_config(self) -> Dict:
+        """
+        Return agent configuration dictionary.
+
+        Returns:
+            Dict with keys: name, description, instruction, model, mcp_url_env_var
+        """
+        pass
+
     def _init_agent(self) -> None:
         """
         Lazy initialization of agent resources.
-        This now constructs the agent and its token manager.
+        This constructs the agent and its token manager using the config.
         """
         if self.agent is None:
+            # Get agent configuration
+            config = self.get_agent_config()
+
             # --- Environment setup ---
-            mcp_url = os.getenv("MCP_SERVER_URL")
+            import os
+            mcp_url = os.getenv(config["mcp_url_env_var"])
+
+            if not mcp_url:
+                raise ValueError(
+                    f"Required environment variable '{config['mcp_url_env_var']}' is not set. "
+                    f"Please set it to the MCP server URL for {config['name']}."
+                )
 
             # Initialize token manager for automatic token refresh
             self.token_manager = TokenManager(audience=mcp_url)
             mcp_auth_headers = self.token_manager.get_headers()
 
-            cocktail_server_params = StreamableHTTPConnectionParams(
+            mcp_server_params = StreamableHTTPConnectionParams(
                 url=mcp_url,
                 headers=mcp_auth_headers,
             )
 
             # Create the actual agent
             self.agent = LlmAgent(
-                model="gemini-2.5-flash",
-                name="cocktail_agent",
-                description="An agent that can help questions about cocktail",
-                instruction="""You are a specialized cocktail expert. Your primary function is to utilize the provided tools to retrieve and relay cocktail information in response to user queries. You can handle all inquiries related to cocktails,
-drink recipes, ingredients,and mixology.You must rely exclusively on these tools for data and refrain from inventing information. Ensure that all responses include the detailed output from the tools used and are formatted in Markdown""",
+                model=config.get("model", "gemini-2.5-flash"),
+                name=config["name"],
+                description=config["description"],
+                instruction=config["instruction"],
                 tools=[
                     McpToolset(
-                        connection_params=cocktail_server_params,
+                        connection_params=mcp_server_params,
                     )
                 ],
             )
@@ -282,7 +302,7 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
         for tool in self.agent.tools:
             if isinstance(tool, McpToolset):
                 # Access private attribute to update headers
-                if hasattr(tool._connection_params, 'headers'):
+                if hasattr(tool._connection_params, "headers"):
                     tool._connection_params.headers = fresh_headers
                     logging.debug("Refreshed MCP authentication headers")
 
