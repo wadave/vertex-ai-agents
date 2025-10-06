@@ -27,6 +27,7 @@ load_dotenv()
 
 class WeatherAgentExecutor(AdkBaseMcpAgentExecutor):
     """Agent Executor for weather-related queries using MCP tools."""
+
     def get_agent_config(self) -> Dict:
         """Return weather agent configuration."""
         return WEATHER_AGENT_CONFIG

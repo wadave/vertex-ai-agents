@@ -35,43 +35,13 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message
 from a2a.utils.errors import ServerError
-from google.auth import default
-from google.auth.transport.requests import Request as AuthRequest
 
-from commons.adk_orchestrator_agent import get_orchestrator_agent
+from common.adk_orchestrator_agent import get_orchestrator_agent
+from common.auth_utils import GoogleAuth
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
-
-
-class GoogleAuth(httpx.Auth):
-    """A custom httpx Auth class for Google Cloud authentication."""
-
-    def __init__(self):
-        """Initializes the GoogleAuth instance."""
-        self.credentials, self.project = default(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
-        self.auth_request = AuthRequest()
-
-    def auth_flow(self, request):
-        """Adds the Authorization header to the request.
-
-        Args:
-            request: The request to add the header to.
-
-        Yields:
-            The request with the Authorization header.
-        """
-        # Refresh the credentials if they are expired
-        if not self.credentials.valid:
-            print("Credentials expired, refreshing...")
-            self.credentials.refresh(self.auth_request)
-
-        # Add the Authorization header to the request
-        request.headers["Authorization"] = f"Bearer {self.credentials.token}"
-        yield request
 
 
 class AdkOrchestratorAgentExecutor(AgentExecutor):
@@ -108,8 +78,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             httpx_client.headers["Content-Type"] = "application/json"
             # Create the actual agent
             self.agent = await get_orchestrator_agent(
-                remote_agent_addresses=self.remote_agent_addresses,
-                httpx_client=httpx_client
+                remote_agent_addresses=self.remote_agent_addresses, httpx_client=httpx_client
             )
 
             # The Runner orchestrates the agent execution
@@ -227,9 +196,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         # Join all text parts with space
         return " ".join(text_parts) if text_parts else "No answer found."
 
-    async def cancel(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> NoReturn:
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> NoReturn:
         """Handle task cancellation requests.
 
         For long-running agents, this would:
@@ -237,8 +204,6 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         2. Clean up resources
         3. Update task state to 'cancelled'
         """
-        logging.warning(
-            f"Cancellation requested for task {context.task_id}, but not supported."
-        )
+        logging.warning(f"Cancellation requested for task {context.task_id}, but not supported.")
         # Inform client that cancellation isn't supported
         raise ServerError(error=UnsupportedOperationError())

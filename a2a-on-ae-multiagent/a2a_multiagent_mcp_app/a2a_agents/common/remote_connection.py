@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Author: Dave Wang
-import traceback
+import logging
 
 from collections.abc import Callable
+
+logger = logging.getLogger(__name__)
 
 from a2a.client import (
     Client,
@@ -64,21 +66,25 @@ class RemoteAgentConnections:
 
         Returns:
             The task, message, or None.
+
+        Raises:
+            Exception: If an error occurs during message sending.
         """
         lastTask: Task | None = None
         try:
-            print("Sending message to remote agent:", message)
+            logger.info(f"Sending message to remote agent: {self.card.name}")
+            logger.debug(f"Message content: {message}")
             async for event in self.agent_client.send_message(message):
                 if isinstance(event, Message):
-                    print("got event object from remote agent:", event)
+                    logger.info("Received message object from remote agent")
+                    logger.debug(f"Message content: {event}")
                     return event
                 if self.is_terminal_or_interrupted(event[0]):
                     return event[0]
                 lastTask = event[0]
         except Exception as e:
-            print("Exception found in send_message")
-            traceback.print_exc()
-            raise e
+            logger.error(f"Exception in send_message to {self.card.name}: {e}", exc_info=True)
+            raise
         return lastTask
 
     def is_terminal_or_interrupted(self, task: Task) -> bool:

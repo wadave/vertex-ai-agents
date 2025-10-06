@@ -14,8 +14,8 @@
 # Author: Dave Wang
 # a2a_multiagent_mcp_app/frontend_option1/main.py
 import asyncio
+import logging
 import os
-import traceback
 from typing import AsyncIterator, List
 
 import gradio as gr
@@ -32,8 +32,15 @@ from a2a.types import (
 )
 from dotenv import load_dotenv
 from google.auth import default
+from google.auth.credentials import Credentials
 from google.auth.transport.requests import Request as AuthRequest
 from google.genai import types as genai_types  # Aliased to avoid conflict
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -61,18 +68,39 @@ remote_a2a_agent_resource_name = (
 
 
 class GoogleAuth(httpx.Auth):
-    """A custom httpx Auth class for Google Cloud authentication."""
+    """A custom httpx Auth class for Google Cloud authentication.
 
-    def __init__(self):
+    This class implements httpx's Auth interface to automatically handle
+    Google Cloud authentication by:
+    1. Using Application Default Credentials (ADC)
+    2. Automatically refreshing expired tokens
+    3. Adding the Authorization header to all requests
+    """
+
+    def __init__(self) -> None:
+        """Initializes the GoogleAuth instance with default credentials.
+
+        Uses Application Default Credentials with cloud-platform scope.
+        """
+        self.credentials: Credentials
+        self.project: str | None
         self.credentials, self.project = default(
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
         self.auth_request = AuthRequest()
 
-    def auth_flow(self, request):
+    def auth_flow(self, request: httpx.Request):
+        """Adds the Authorization header to the request.
+
+        Args:
+            request: The httpx request to add the header to.
+
+        Yields:
+            The request with the Authorization header added.
+        """
         # Refresh the credentials if they are expired
         if not self.credentials.valid:
-            print("Credentials expired, refreshing...")
+            logger.info("Credentials expired, refreshing...")
             self.credentials.refresh(self.auth_request)
 
         # Add the Authorization header to the request
@@ -80,11 +108,16 @@ class GoogleAuth(httpx.Auth):
         yield request
 
 
-async def get_agent_card(resource_name: str):
-    """Fetches the agent card from Vertex AI."""
-    config = {
-        "http_options": {"base_url": f"https://{LOCATION}-aiplatform.googleapis.com"}
-    }
+async def get_agent_card(resource_name: str) -> object:
+    """Fetches the agent card from Vertex AI.
+
+    Args:
+        resource_name: The full resource name of the agent engine.
+
+    Returns:
+        The agent card object.
+    """
+    config = {"http_options": {"base_url": f"https://{LOCATION}-aiplatform.googleapis.com"}}
 
     remote_a2a_agent = client.agent_engines.get(
         name=resource_name,
@@ -105,9 +138,9 @@ async def get_response_from_agent(
 
     try:
         # --- 1. Get Agent Card ---
-        print("Fetching agent card...")
+        logger.info("Fetching agent card...")
         remote_a2a_agent_card = await get_agent_card(remote_a2a_agent_resource_name)
-        print("Agent card fetched.")
+        logger.info("Agent card fetched successfully")
 
         # --- 2. Create HTTP Client with Auth ---
         httpx_client = httpx.AsyncClient(
@@ -124,7 +157,7 @@ async def get_response_from_agent(
             )
         )
         a2a_client = factory.create(remote_a2a_agent_card)
-        print("A2A client created.")
+        logger.info("A2A client created successfully")
 
         # --- 4. Create Message ---
         message = Message(
@@ -134,7 +167,7 @@ async def get_response_from_agent(
         )
 
         # --- 5. Send Message and Stream Response ---
-        print(f"Sending message to agent: {query}")
+        logger.info(f"Sending message to agent: {query}")
         response_stream = a2a_client.send_message(message)
 
         final_result_text = None
@@ -143,19 +176,17 @@ async def get_response_from_agent(
         async for response_chunk in response_stream:
             task_object = response_chunk[0]  # Task object is the first element
 
-            print(f"Received task update. Status: {task_object.status.state}")
+            logger.debug(f"Received task update. Status: {task_object.status.state}")
 
             # Wait for the task to complete
             if task_object.status.state == TaskState.completed:
-                print("Task completed. Checking for artifacts...")
+                logger.info("Task completed. Checking for artifacts...")
                 if hasattr(task_object, "artifacts") and task_object.artifacts:
                     for artifact in task_object.artifacts:
                         # Find the first text part in the artifacts
-                        if artifact.parts and isinstance(
-                            artifact.parts[0].root, TextPart
-                        ):
+                        if artifact.parts and isinstance(artifact.parts[0].root, TextPart):
                             final_result_text = artifact.parts[0].root.text
-                            print(f"Found artifact text: {final_result_text[:50]}...")
+                            logger.info(f"Found artifact text: {final_result_text[:50]}...")
                             break  # Stop looking at artifacts
                 if final_result_text:
                     break  # Stop iterating task updates
@@ -163,7 +194,7 @@ async def get_response_from_agent(
             # Handle task failure
             elif task_object.status.state == TaskState.failed:
                 error_message = f"Task failed: {task_object.status.message if task_object.status else 'Unknown error'}"
-                print(error_message)
+                logger.error(error_message)
                 yield gr.ChatMessage(role="assistant", content=error_message)
                 return  # Exit the generator
 
@@ -171,15 +202,16 @@ async def get_response_from_agent(
         if final_result_text:
             yield gr.ChatMessage(role="assistant", content=final_result_text)
         else:
-            print("Task finished but no text artifact was found.")
+            logger.warning("Task finished but no text artifact was found")
             yield gr.ChatMessage(
                 role="assistant",
                 content="I processed your request but found no text response.",
             )
 
     except Exception as e:
-        print(f"Error in get_response_from_agent (Type: {type(e)}): {e}")
-        traceback.print_exc()  # This will print the full traceback
+        logger.error(
+            f"Error in get_response_from_agent (Type: {type(e).__name__}): {e}", exc_info=True
+        )
         yield gr.ChatMessage(
             role="assistant",
             content=f"An error occurred: {e}",
@@ -189,15 +221,15 @@ async def get_response_from_agent(
         # Close the A2A client, which also closes the httpx_client it manages
         if a2a_client:
             await a2a_client.close()
-            print("A2A client closed.")
+            logger.debug("A2A client closed")
         elif httpx_client:
             # Fallback if a2a_client creation failed but httpx_client was made
             await httpx_client.aclose()
-            print("HTTPX client closed.")
+            logger.debug("HTTPX client closed")
 
 
-async def main():
-    """Main gradio app."""
+async def main() -> None:
+    """Main gradio app that launches the Gradio interface."""
 
     with gr.Blocks(theme=gr.themes.Ocean(), title="A2A Host Agent") as demo:
         # Using gr.Markdown to center the image and title
@@ -220,18 +252,18 @@ async def main():
             description="This assistant can help you to check weather and find cocktail information",
         )
 
-    print("Launching Gradio interface on http://0.0.0.0:8080")
+    logger.info("Launching Gradio interface on http://0.0.0.0:8080")
     demo.queue().launch(
         server_name="0.0.0.0",
         server_port=8080,
     )
-    print("Gradio application has been shut down.")
+    logger.info("Gradio application has been shut down")
 
 
 if __name__ == "__main__":
     # Create the 'static' directory if it doesn't exist for the image
     if not os.path.exists("static"):
         os.makedirs("static")
-        print("Created 'static' directory. Please add your 'a2a.png' image there.")
+        logger.info("Created 'static' directory. Please add your 'a2a.png' image there.")
 
     asyncio.run(main())

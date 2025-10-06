@@ -27,6 +27,7 @@ load_dotenv()
 
 class CocktailAgentExecutor(AdkBaseMcpAgentExecutor):
     """Agent Executor for cocktail-related queries using MCP tools."""
+
     def get_agent_config(self) -> Dict:
         """Return cocktail agent configuration."""
         return COCKTAIL_AGENT_CONFIG

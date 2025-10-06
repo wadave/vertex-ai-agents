@@ -119,9 +119,7 @@ class TokenManager:
                 # ID tokens typically expire in 1 hour (3600 seconds)
                 # Refresh 5 minutes (300 seconds) before expiry by default
                 self._expiry = current_time + 3600 - self.refresh_buffer_seconds
-                logging.info(
-                    f"TokenManager: Refreshed token, next refresh at {self._expiry}"
-                )
+                logging.info(f"TokenManager: Refreshed token, next refresh at {self._expiry}")
             else:
                 # No token available
                 self._token = None
@@ -169,6 +167,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             # --- Environment setup ---
             import os
+
             mcp_url = os.getenv(config["mcp_url_env_var"])
 
             if not mcp_url:
@@ -334,9 +333,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         # Join all text parts with space
         return " ".join(text_parts) if text_parts else "No answer found."
 
-    async def cancel(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> NoReturn:
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> NoReturn:
         """Handle task cancellation requests.
 
         For long-running agents, this would:
@@ -344,8 +341,6 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         2. Clean up resources
         3. Update task state to 'cancelled'
         """
-        logging.warning(
-            f"Cancellation requested for task {context.task_id}, but not supported."
-        )
+        logging.warning(f"Cancellation requested for task {context.task_id}, but not supported.")
         # Inform client that cancellation isn't supported
         raise ServerError(error=UnsupportedOperationError())

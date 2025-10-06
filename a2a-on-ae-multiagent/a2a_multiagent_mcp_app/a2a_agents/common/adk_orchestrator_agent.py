@@ -15,10 +15,10 @@
 import asyncio
 import base64
 import json
+import logging
 import uuid
-import httpx
-from dotenv import load_dotenv
 
+import httpx
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.types import (
     AgentCard,
@@ -31,16 +31,19 @@ from a2a.types import (
     TextPart,
     TransportProtocol,
 )
+from common.remote_connection import RemoteAgentConnections, TaskUpdateCallback
+from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
-
-# from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
-from commons.remote_connection import RemoteAgentConnections, TaskUpdateCallback
 
-load_dotenv() 
+# from google.adk.models.lite_llm import LiteLlm
+
+logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 
 class AdkOrchestratorAgent:
@@ -104,7 +107,7 @@ class AdkOrchestratorAgent:
         )
         card = await card_resolver.get_agent_card()
 
-        print(f"Retrieved card for {card.name} from {address}")
+        logger.info(f"Retrieved card for {card.name} from {address}")
         self.register_agent_card(card)
 
     def register_agent_card(self, card: AgentCard):
@@ -160,7 +163,7 @@ Agents:
 
 Current agent: {current_agent["active_agent"]} """
 
-    def check_state(self, context: ReadonlyContext):
+    def check_state(self, context: ReadonlyContext) -> dict[str, str]:
         """Checks the state of the agent.
 
         Args:
@@ -190,16 +193,14 @@ Current agent: {current_agent["active_agent"]} """
         if "session_active" not in state or not state["session_active"]:
             state["session_active"] = True
 
-    def list_remote_agents(self):
+    def list_remote_agents(self) -> list[dict[str, str]]:
         """List the available remote agents you can use to delegate the task."""
         if not self.remote_agent_connections:
             return []
 
         remote_agent_info = []
         for card in self.cards.values():
-            remote_agent_info.append(
-                {"name": card.name, "description": card.description}
-            )
+            remote_agent_info.append({"name": card.name, "description": card.description})
         return remote_agent_info
 
     async def send_message(
@@ -243,8 +244,8 @@ Current agent: {current_agent["active_agent"]} """
         )
         response = await client.send_message(request_message)
         if isinstance(response, Message):
-            print("Got message object from remote agent:")
-            print(response)
+            logger.info("Got message object from remote agent")
+            logger.debug(f"Message content: {response}")
             return await convert_parts(response.parts, tool_context)
         task: Task = response
         # Assume completion unless a state returns that isn't complete
@@ -270,16 +271,14 @@ Current agent: {current_agent["active_agent"]} """
         response = []
         if task.status.message:
             # Assume the information is in the task message.
-            response.extend(
-                await convert_parts(task.status.message.parts, tool_context)
-            )
+            response.extend(await convert_parts(task.status.message.parts, tool_context))
         if task.artifacts:
             for artifact in task.artifacts:
                 response.extend(await convert_parts(artifact.parts, tool_context))
         return response
 
 
-async def convert_parts(parts: list[Part], tool_context: ToolContext):
+async def convert_parts(parts: list[Part], tool_context: ToolContext) -> list:
     """Converts a list of parts.
 
     Args:
@@ -295,7 +294,7 @@ async def convert_parts(parts: list[Part], tool_context: ToolContext):
     return rval
 
 
-async def convert_part(part: Part, tool_context: ToolContext):
+async def convert_part(part: Part, tool_context: ToolContext) -> str | DataPart | dict:
     """Converts a part.
 
     Args:
@@ -303,7 +302,7 @@ async def convert_part(part: Part, tool_context: ToolContext):
         tool_context: The tool context.
 
     Returns:
-        The converted part.
+        The converted part (string, DataPart, or dict).
     """
     if part.root.kind == "text":
         return part.root.text
@@ -325,8 +324,7 @@ async def convert_part(part: Part, tool_context: ToolContext):
 
 
 async def get_orchestrator_agent(
-    remote_agent_addresses: list[str],
-    httpx_client: httpx.AsyncClient | None = None
+    remote_agent_addresses: list[str], httpx_client: httpx.AsyncClient | None = None
 ) -> AdkOrchestratorAgent:
     """Gets the orchestrator agent.
 
