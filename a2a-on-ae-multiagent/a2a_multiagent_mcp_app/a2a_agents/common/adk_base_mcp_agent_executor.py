@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Author: Dave Wang
+import os
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -23,10 +24,13 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Role, TaskState, TextPart, UnsupportedOperationError
 from a2a.utils import new_agent_text_message
 from a2a.utils.errors import ServerError
+from google import adk
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.memory import VertexAiMemoryBankService
+from google.adk.sessions import VertexAiSessionService
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools.mcp_tool.mcp_toolset import (
     McpToolset,
@@ -119,7 +123,9 @@ class TokenManager:
                 # ID tokens typically expire in 1 hour (3600 seconds)
                 # Refresh 5 minutes (300 seconds) before expiry by default
                 self._expiry = current_time + 3600 - self.refresh_buffer_seconds
-                logging.info(f"TokenManager: Refreshed token, next refresh at {self._expiry}")
+                logging.info(
+                    f"TokenManager: Refreshed token, next refresh at {self._expiry}"
+                )
             else:
                 # No token available
                 self._token = None
@@ -140,11 +146,22 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
     5. MCP authentication and token management
     """
 
-    def __init__(self) -> None:
-        """Initialize with lazy loading pattern."""
+    def __init__(self, agent_engine_id: str = None) -> None:
+        """Initialize with lazy loading pattern.
+
+        Args:
+            agent_engine_id: Optional agent engine ID. If not provided, creates a new one.
+        """
         self.agent = None
         self.runner = None
         self.token_manager = None
+        self.agent_engine_id = agent_engine_id
+
+        self.project_id = os.environ.get("PROJECT_ID")
+        self.location = os.environ.get("LOCATION")
+
+        if self.agent_engine_id is None:
+            self.agent_engine_id = self.get_agent_engine()
 
     @abstractmethod
     def get_agent_config(self) -> Dict:
@@ -156,6 +173,37 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         """
         pass
 
+    def get_agent_engine(self) -> str:
+        """
+        Create a basic agent engine with default memory configuration.
+
+        Subclasses can override this method to customize memory topics
+        and other agent engine settings specific to their use case.
+
+        Returns:
+            str: Agent engine ID
+        """
+        import vertexai
+
+        client = vertexai.Client(
+            project=self.project_id,
+            location=self.location,
+        )
+
+        agent_engine = client.agent_engines.create(
+            config={
+                "context_spec": {
+                    "memory_bank_config": {
+                        "generation_config": {
+                            "model": f"projects/{self.project_id}/locations/{self.location}/publishers/google/models/gemini-2.5-flash"
+                        }
+                    }
+                }
+            }
+        )
+        agent_engine_id = agent_engine.api_resource.name.split("/")[-1]
+        return agent_engine_id
+
     def _init_agent(self) -> None:
         """
         Lazy initialization of agent resources.
@@ -165,9 +213,19 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Get agent configuration
             config = self.get_agent_config()
 
-            # --- Environment setup ---
-            import os
+            my_memory_service = VertexAiMemoryBankService(
+                project=os.environ.get("PROJECT_ID"),
+                location=os.environ.get("LOCATION"),
+                agent_engine_id=self.agent_engine_id,
+            )
 
+            my_session_service = VertexAiSessionService(
+                project=os.environ.get("PROJECT_ID"),
+                location=os.environ.get("LOCATION"),
+                agent_engine_id=self.agent_engine_id,
+            )
+
+            # --- Environment setup ---
             mcp_url = os.getenv(config["mcp_url_env_var"])
 
             if not mcp_url:
@@ -185,6 +243,29 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 headers=mcp_auth_headers,
             )
 
+            async def auto_save_session_to_memory_callback(callback_context):
+                """
+                Callback to save conversation session to Vertex AI Memory Bank.
+
+                This callback is triggered after the agent completes processing.
+                It extracts conversation events from the session and sends them to
+                the Memory Bank service for processing. The service generates semantic
+                memories that can be retrieved in future conversations.
+
+                Memory topics are configured in the agent engine (see get_agent_engine method).
+                Subclasses can override get_agent_engine to customize memory topics.
+                """
+                session = callback_context._invocation_context.session
+                memory_service = callback_context._invocation_context.memory_service
+
+                logging.info(f"Saving session {session.id} to memory bank for user_id={session.user_id}")
+
+                try:
+                    await memory_service.add_session_to_memory(session)
+                    logging.info(f"Memory generation completed for session {session.id}")
+                except Exception as e:
+                    logging.error(f"Memory generation failed for session {session.id}: {e}", exc_info=True)
+
             # Create the actual agent
             self.agent = LlmAgent(
                 model=config.get("model", "gemini-2.5-flash"),
@@ -194,8 +275,10 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 tools=[
                     McpToolset(
                         connection_params=mcp_server_params,
-                    )
+                    ),
+                    adk.tools.preload_memory_tool.PreloadMemoryTool(),
                 ],
+                after_agent_callback=auto_save_session_to_memory_callback,
             )
 
             # The Runner orchestrates the agent execution
@@ -206,8 +289,10 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 # In-memory services for simplicity
                 # In production, you might use persistent storage
                 artifact_service=InMemoryArtifactService(),
-                session_service=InMemorySessionService(),
-                memory_service=InMemoryMemoryService(),
+                # session_service=InMemorySessionService(),
+                # memory_service=InMemoryMemoryService(),
+                session_service=my_session_service,
+                memory_service=my_memory_service,
             )
 
     async def execute(
@@ -254,6 +339,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             # Run the agent asynchronously
             # This may involve multiple LLM calls and tool uses
+            answer_sent = False
             async for event in self.runner.run_async(
                 session_id=session.id,
                 user_id="user",  # In production, use actual user ID
@@ -261,7 +347,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             ):
                 # The agent may produce multiple events
                 # We're interested in the final response
-                if event.is_final_response():
+                if event.is_final_response() and not answer_sent:
                     # Extract the answer text from the response
                     answer = self._extract_answer(event)
                     logging.info(f" {answer}")
@@ -276,7 +362,8 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
                     # Mark task as completed successfully
                     await updater.complete()
-                    break
+                    answer_sent = True
+                    # Don't break - continue consuming events to allow callbacks to execute
 
         except Exception as e:
             # Errors should never pass silently (Zen of Python)
@@ -307,21 +394,14 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
     async def _get_or_create_session(self, context_id: str):
         """Get existing session or create new one."""
-        session = await self.runner.session_service.get_session(
+        # For Vertex AI Session Service, don't pass session_id to get_session
+        # Instead, create a new session each time (stateless per A2A context)
+        logging.info(f"Creating new session for context {context_id}.")
+        session = await self.runner.session_service.create_session(
             app_name=self.runner.app_name,
             user_id="user",
-            session_id=context_id,
+            # Don't pass session_id - let Vertex AI generate a valid one
         )
-
-        if not session:
-            logging.info(f"No session found for {context_id}, creating new one.")
-            session = await self.runner.session_service.create_session(
-                app_name=self.runner.app_name,
-                user_id="user",
-                session_id=context_id,
-            )
-        else:
-            logging.info(f"Found existing session {context_id}.")
 
         return session
 
@@ -333,7 +413,9 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         # Join all text parts with space
         return " ".join(text_parts) if text_parts else "No answer found."
 
-    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> NoReturn:
+    async def cancel(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> NoReturn:
         """Handle task cancellation requests.
 
         For long-running agents, this would:
@@ -341,6 +423,8 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         2. Clean up resources
         3. Update task state to 'cancelled'
         """
-        logging.warning(f"Cancellation requested for task {context.task_id}, but not supported.")
+        logging.warning(
+            f"Cancellation requested for task {context.task_id}, but not supported."
+        )
         # Inform client that cancellation isn't supported
         raise ServerError(error=UnsupportedOperationError())
