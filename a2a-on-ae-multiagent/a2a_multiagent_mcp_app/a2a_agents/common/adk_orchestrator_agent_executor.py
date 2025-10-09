@@ -13,56 +13,77 @@
 # limitations under the License.
 # Author: Dave Wang
 import logging
+import os
+from abc import ABC, abstractmethod
 from typing import NoReturn
-import httpx
-from dotenv import load_dotenv
-from google.adk import Runner
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.sessions import InMemorySessionService
 
-from google.genai import types
+import httpx
 
 # A2A
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import (
-    Role,
-    TaskState,
-    TextPart,
-    UnsupportedOperationError,
-)
+from a2a.types import Role, TaskState, TextPart, UnsupportedOperationError
 from a2a.utils import new_agent_text_message
 from a2a.utils.errors import ServerError
+from dotenv import load_dotenv
+from google.adk import Runner
+from google.adk.artifacts import InMemoryArtifactService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.sessions import InMemorySessionService, VertexAiSessionService
+from google.genai import types
 
 from common.adk_orchestrator_agent import get_orchestrator_agent
 from common.auth_utils import GoogleAuth
+from common.adk_base_mcp_agent_executor import PersistentVertexAiMemoryBankService
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
 
 
-class AdkOrchestratorAgentExecutor(AgentExecutor):
-    """Agent Executor that bridges A2A protocol with our ADK agent.
+class AdkOrchestratorAgentExecutor(AgentExecutor, ABC):
+    """Base abstract class for orchestrator agent executors that bridge A2A protocol
+    with ADK agents.
 
     The executor handles:
     1. Protocol translation (A2A messages to/from agent format)
     2. Task lifecycle management (submitted -> working -> completed)
     3. Session management for multi-turn conversations
     4. Error handling and recovery
+    5. Agent engine configuration with custom memory topics
     """
 
-    def __init__(self, remote_agent_addresses: list[str]) -> None:
+    def __init__(
+        self, remote_agent_addresses: list[str], agent_engine_id: str = None
+    ) -> None:
         """Initialize with lazy loading pattern.
 
         Args:
             remote_agent_addresses: A list of remote agent addresses.
+            agent_engine_id: Optional agent engine ID for memory bank. If not
+              provided, creates a new one.
         """
         self.remote_agent_addresses = remote_agent_addresses
         self.agent = None
         self.runner = None
+        self.agent_engine_id = agent_engine_id
+
+        if self.agent_engine_id is None:
+            self.agent_engine_id = self.get_agent_engine()
+
+    @abstractmethod
+    def get_agent_engine(self) -> str:
+        """
+        Create an agent engine with custom memory topics.
+
+        Subclasses must implement this method to define their specific memory topics
+        and configuration for the agent engine.
+
+        Returns:
+            str: Agent engine ID
+        """
+        pass
 
     async def _init_agent(self) -> None:
         """
@@ -78,19 +99,37 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             httpx_client.headers["Content-Type"] = "application/json"
             # Create the actual agent
             self.agent = await get_orchestrator_agent(
-                remote_agent_addresses=self.remote_agent_addresses, httpx_client=httpx_client
+                remote_agent_addresses=self.remote_agent_addresses,
+                httpx_client=httpx_client,
             )
+
+            # Configure memory and session services
+            if self.agent_engine_id:
+                # Use Vertex AI Memory Bank and Session Service for production
+                my_memory_service = PersistentVertexAiMemoryBankService(
+                    project=os.environ.get("PROJECT_ID"),
+                    location=os.environ.get("LOCATION"),
+                    agent_engine_id=self.agent_engine_id,
+                )
+
+                my_session_service = VertexAiSessionService(
+                    project=os.environ.get("PROJECT_ID"),
+                    location=os.environ.get("LOCATION"),
+                    agent_engine_id=self.agent_engine_id,
+                )
+            else:
+                # Use in-memory services for local testing
+                my_memory_service = InMemoryMemoryService()
+                my_session_service = InMemorySessionService()
 
             # The Runner orchestrates the agent execution
             # It manages the LLM calls, tool execution, and state
             self.runner = Runner(
                 app_name=self.agent.name,
                 agent=self.agent,
-                # In-memory services for simplicity
-                # In production, you might use persistent storage
                 artifact_service=InMemoryArtifactService(),
-                session_service=InMemorySessionService(),
-                memory_service=InMemoryMemoryService(),
+                session_service=my_session_service,
+                memory_service=my_memory_service,
             )
 
     async def execute(
@@ -134,6 +173,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
 
             # Run the agent asynchronously
             # This may involve multiple LLM calls and tool uses
+            answer_sent = False
             async for event in self.runner.run_async(
                 session_id=session.id,
                 user_id="user",  # In production, use actual user ID
@@ -141,7 +181,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             ):
                 # The agent may produce multiple events
                 # We're interested in the final response
-                if event.is_final_response():
+                if event.is_final_response() and not answer_sent:
                     # Extract the answer text from the response
                     answer = self._extract_answer(event)
                     logging.info(f" {answer}")
@@ -156,7 +196,8 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
 
                     # Mark task as completed successfully
                     await updater.complete()
-                    break
+                    answer_sent = True
+                    # Don't break - continue consuming events to allow callbacks to execute
 
         except Exception as e:
             # Errors should never pass silently (Zen of Python)
@@ -169,22 +210,39 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             raise
 
     async def _get_or_create_session(self, context_id: str):
-        """Get existing session or create new one."""
-        session = await self.runner.session_service.get_session(
-            app_name=self.runner.app_name,
-            user_id="user",
-            session_id=context_id,
-        )
+        """Get existing session or create new one.
 
-        if not session:
-            logging.info(f"No session found for {context_id}, creating new one.")
-            session = await self.runner.session_service.create_session(
+        Note: For Vertex AI Session Service, we create a new session each time
+        because the A2A context_id format may not be compatible with Vertex AI's
+        session resource name requirements. The session service will generate
+        a valid session ID.
+        """
+        if isinstance(self.runner.session_service, InMemorySessionService):
+            # For in-memory sessions, we can use the context_id directly
+            session = await self.runner.session_service.get_session(
                 app_name=self.runner.app_name,
                 user_id="user",
                 session_id=context_id,
             )
+
+            if not session:
+                logging.info(f"No session found for {context_id}, creating new one.")
+                session = await self.runner.session_service.create_session(
+                    app_name=self.runner.app_name,
+                    user_id="user",
+                    session_id=context_id,
+                )
+            else:
+                logging.info(f"Found existing session {context_id}.")
         else:
-            logging.info(f"Found existing session {context_id}.")
+            # For Vertex AI Session Service, create a new session without passing session_id
+            # Let Vertex AI generate a valid session resource name
+            logging.info(f"Creating new session for context {context_id}.")
+            session = await self.runner.session_service.create_session(
+                app_name=self.runner.app_name,
+                user_id="user",
+                # Don't pass session_id - let Vertex AI generate a valid one
+            )
 
         return session
 
@@ -196,7 +254,9 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         # Join all text parts with space
         return " ".join(text_parts) if text_parts else "No answer found."
 
-    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> NoReturn:
+    async def cancel(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> NoReturn:
         """Handle task cancellation requests.
 
         For long-running agents, this would:
@@ -204,6 +264,8 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         2. Clean up resources
         3. Update task state to 'cancelled'
         """
-        logging.warning(f"Cancellation requested for task {context.task_id}, but not supported.")
+        logging.warning(
+            f"Cancellation requested for task {context.task_id}, but not supported."
+        )
         # Inform client that cancellation isn't supported
         raise ServerError(error=UnsupportedOperationError())

@@ -37,6 +37,7 @@ from a2a.utils import (
     new_task,
 )
 from a2a.utils.errors import ServerError
+import google.auth
 from google.auth.transport.requests import Request as AuthRequest
 from google.oauth2.id_token import fetch_id_token
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -108,14 +109,45 @@ class LanggraphBaseMCPAgentExecutor(AgentExecutor, ABC):
             Factory function for creating authenticated httpx clients
         """
 
+        # def google_auth_client_factory(
+        #     headers=None,
+        #     timeout=None,
+        #     auth=None,  # noqa: ARG001
+        # ):
+        #     """Factory that creates httpx.AsyncClient with Google Auth."""
+        #     auth_request = AuthRequest()
+        #     id_token = fetch_id_token(auth_request, url)
+# 
+        #     # Merge custom headers with auth headers
+        #     client_headers = {
+        #         "Content-Type": "application/json",
+        #         "Authorization": f"Bearer {id_token}",
+        #     }
+        #     if headers:
+        #         client_headers.update(headers)
+# 
+        #     return httpx.AsyncClient(
+        #         headers=client_headers,
+        #         timeout=timeout if timeout is not None else 120,
+        #     )
+# 
+        # return google_auth_client_factory
+    
         def google_auth_client_factory(
             headers=None,
             timeout=None,
             auth=None,  # noqa: ARG001
         ):
             """Factory that creates httpx.AsyncClient with Google Auth."""
+            # Explicitly get the default credentials
+            credentials, project_id = google.auth.default()
+
             auth_request = AuthRequest()
-            id_token = fetch_id_token(auth_request, url)
+            # Refresh the credentials if they've expired
+            credentials.refresh(auth_request)
+
+            # Use the token from the credentials object
+            id_token = credentials.token
 
             # Merge custom headers with auth headers
             client_headers = {

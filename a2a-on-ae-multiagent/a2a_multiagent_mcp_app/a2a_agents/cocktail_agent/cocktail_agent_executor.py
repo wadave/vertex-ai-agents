@@ -53,13 +53,81 @@ class CocktailAgentExecutor(AdkBaseMcpAgentExecutor):
             location=self.location,
         )
 
+        example = {
+            "conversationSource": {
+                "events": [
+                    {
+                        "content": {
+                            "role": "model",
+                            "parts": [
+                                {
+                                    "text": (
+                                        "Here is the recipe for the Margarita cocktail:\n\n"
+                                        "Margarita\n"
+                                        "ID: 11007\n"
+                                        "Category: Ordinary Drink\n"
+                                        "Glass: Cocktail glass\n"
+                                        "Alcoholic: Alcoholic\n"
+                                        "Instructions: Rub the rim of the glass with the lime "
+                                        "slice to make the salt stick to it. Take care to "
+                                        "moisten only the outer rim and sprinkle the salt on "
+                                        "it. The salt should be applied to the outside edge of "
+                                        "the glass. Shake the tequila, Cointreau, and lime "
+                                        "juice with ice, then strain into the prepared glass."
+                                    )
+                                }
+                            ],
+                        }
+                    },
+                    {
+                        "content": {
+                            "role": "user",
+                            "parts": [
+                                {"text": "What are the recipes for a Margarita?"}
+                            ],
+                        }
+                    },
+                ]
+            },
+            "generatedMemories": [
+                {
+                    "fact": (
+                        "Margarita\n"
+                        "ID: 11007\n"
+                        "Category: Ordinary Drink\n"
+                        "Glass: Cocktail glass\n"
+                        "Alcoholic: Alcoholic\n"
+                        "Instructions: Rub the rim of the glass with the lime slice to "
+                        "make the salt stick to it. Take care to moisten only the "
+                        "outer rim and sprinkle the salt on it. The salt should be "
+                        "applied to the outside edge of the glass. Shake the tequila, "
+                        "Cointreau, and lime juice with ice, then strain into the "
+                        "prepared glass.."
+                    )
+                },
+                {"fact": "The user asked for ingredients for a Margarita."},
+            ],
+        }
+
         user_preferences_config = {
-            "scope_keys": ["user_id"],
+            "generate_memories_examples": [example],
             "memory_topics": [
                 {
                     "custom_memory_topic": {
                         "label": "cocktail_id",
-                        "description": "cocktail_id is the unique identifier for a cocktail.",
+                        "description": "cocktail id retrieved from MCP server",
+                    }
+                },
+                {
+                    "custom_memory_topic": {
+                        "label": "cocktail_recipe",
+                        "description": "cocktail recipe from MCP server",
+                    }
+                },
+                {
+                    "custom_memory_topic": {
+                        "label": "cocktail_ingredients",
+                        "description": "cocktail ingredients from MCP server",
                     }
                 },
                 {"managed_memory_topic": {"managed_topic_enum": "USER_PERSONAL_INFO"}},
@@ -82,7 +150,10 @@ class CocktailAgentExecutor(AdkBaseMcpAgentExecutor):
                 "context_spec": {
                     "memory_bank_config": {
                         "generation_config": {
-                            "model": f"projects/{self.project_id}/locations/{self.location}/publishers/google/models/gemini-2.5-flash"
+                            "model": (
+                                f"projects/{self.project_id}/locations/{self.location}/"
+                                "publishers/google/models/gemini-2.5-flash"
+                            )
                         },
                         "customization_configs": [user_preferences_config],
                     }

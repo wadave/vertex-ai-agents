@@ -13,15 +13,9 @@
 # limitations under the License.
 # Author: Dave Wang
 import logging
-
 from collections.abc import Callable
 
-logger = logging.getLogger(__name__)
-
-from a2a.client import (
-    Client,
-    ClientFactory,
-)
+from a2a.client import Client, ClientFactory
 from a2a.types import (
     AgentCard,
     Message,
@@ -30,6 +24,8 @@ from a2a.types import (
     TaskState,
     TaskStatusUpdateEvent,
 )
+
+logger = logging.getLogger(__name__)
 
 
 TaskCallbackArg = Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent
@@ -83,7 +79,9 @@ class RemoteAgentConnections:
                     return event[0]
                 lastTask = event[0]
         except Exception as e:
-            logger.error(f"Exception in send_message to {self.card.name}: {e}", exc_info=True)
+            logger.error(
+                f"Exception in send_message to {self.card.name}: {e}", exc_info=True
+            )
             raise
         return lastTask
 

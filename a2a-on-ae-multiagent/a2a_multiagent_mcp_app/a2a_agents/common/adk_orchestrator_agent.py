@@ -31,19 +31,50 @@ from a2a.types import (
     TextPart,
     TransportProtocol,
 )
-from common.remote_connection import RemoteAgentConnections, TaskUpdateCallback
 from dotenv import load_dotenv
+from google import adk
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
+from common.remote_connection import RemoteAgentConnections, TaskUpdateCallback
+
 # from google.adk.models.lite_llm import LiteLlm
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+
+async def auto_save_session_to_memory_callback(callback_context: CallbackContext):
+    """
+    Callback to save conversation session to Vertex AI Memory Bank.
+
+    This callback is triggered after the agent completes processing.
+    It extracts conversation events from the session and sends them to
+    the Memory Bank service for processing. The service generates semantic
+    memories that can be retrieved in future conversations.
+
+    Args:
+        callback_context: The callback context containing session and memory service.
+    """
+    session = callback_context._invocation_context.session
+    memory_service = callback_context._invocation_context.memory_service
+
+    logging.info(
+        f"Saving session {session.id} to memory bank for user_id={session.user_id}"
+    )
+
+    try:
+        await memory_service.add_session_to_memory(session)
+        logging.info(f"Memory generation completed for session {session.id}")
+    except Exception as e:
+        logging.error(
+            f"Memory generation failed for session {session.id}: {e}",
+            exc_info=True,
+        )
 
 
 class AdkOrchestratorAgent:
@@ -80,8 +111,8 @@ class AdkOrchestratorAgent:
         self.remote_agent_connections: dict[str, RemoteAgentConnections] = {}
         self.cards: dict[str, AgentCard] = {}
         self.agents: str = ""
-        loop = asyncio.get_running_loop()
-        loop.create_task(self.init_remote_agent_addresses(remote_agent_addresses))
+        self._init_task = None
+        self._remote_agent_addresses = remote_agent_addresses
 
     async def init_remote_agent_addresses(self, remote_agent_addresses: list[str]):
         """Initializes the remote agent addresses.
@@ -89,10 +120,9 @@ class AdkOrchestratorAgent:
         Args:
             remote_agent_addresses: A list of remote agent addresses.
         """
-        async with asyncio.TaskGroup() as task_group:
-            for address in remote_agent_addresses:
-                task_group.create_task(self.retrieve_card(address))
-        # The task groups run in the background and complete.
+        # Use asyncio.gather for Python 3.10 compatibility (TaskGroup is 3.11+)
+        tasks = [self.retrieve_card(address) for address in remote_agent_addresses]
+        await asyncio.gather(*tasks)
         # Once completed the self.agents string is set and the remote
         # connections are established.
 
@@ -138,7 +168,9 @@ class AdkOrchestratorAgent:
             tools=[
                 self.list_remote_agents,
                 self.send_message,
+                adk.tools.preload_memory_tool.PreloadMemoryTool(),
             ],
+            after_agent_callback=auto_save_session_to_memory_callback,
         )
 
     def root_instruction(self, context: ReadonlyContext) -> str:
@@ -152,6 +184,7 @@ can use to delegate the task.
 
 Execution:
 - For actionable requests, you can use `send_message` to interact with remote agents to take action.
+- You could use tools to check previous conversations, and relay information in response to user queries.
 
 Be sure to include the remote agent name when you respond to the user.
 
@@ -200,7 +233,9 @@ Current agent: {current_agent["active_agent"]} """
 
         remote_agent_info = []
         for card in self.cards.values():
-            remote_agent_info.append({"name": card.name, "description": card.description})
+            remote_agent_info.append(
+                {"name": card.name, "description": card.description}
+            )
         return remote_agent_info
 
     async def send_message(
@@ -271,7 +306,9 @@ Current agent: {current_agent["active_agent"]} """
         response = []
         if task.status.message:
             # Assume the information is in the task message.
-            response.extend(await convert_parts(task.status.message.parts, tool_context))
+            response.extend(
+                await convert_parts(task.status.message.parts, tool_context)
+            )
         if task.artifacts:
             for artifact in task.artifacts:
                 response.extend(await convert_parts(artifact.parts, tool_context))
@@ -325,7 +362,7 @@ async def convert_part(part: Part, tool_context: ToolContext) -> str | DataPart 
 
 async def get_orchestrator_agent(
     remote_agent_addresses: list[str], httpx_client: httpx.AsyncClient | None = None
-) -> AdkOrchestratorAgent:
+) -> Agent:
     """Gets the orchestrator agent.
 
     Args:
@@ -335,8 +372,15 @@ async def get_orchestrator_agent(
     Returns:
         The orchestrator agent.
     """
-    orchestrator_agent = AdkOrchestratorAgent(
+    orchestrator_agent_wrapper = AdkOrchestratorAgent(
         remote_agent_addresses=remote_agent_addresses,
         http_client=httpx_client,
-    ).create_agent()
-    return orchestrator_agent
+    )
+
+    # Initialize remote agents before creating the agent
+    # This ensures agents are available when the orchestrator is first used
+    await orchestrator_agent_wrapper.init_remote_agent_addresses(
+        remote_agent_addresses
+    )
+
+    return orchestrator_agent_wrapper.create_agent()

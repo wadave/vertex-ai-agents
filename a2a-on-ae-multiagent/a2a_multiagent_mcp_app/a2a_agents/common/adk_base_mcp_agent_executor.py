@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Author: Dave Wang
-import os
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
 from typing import Dict, NoReturn
@@ -28,10 +28,9 @@ from google import adk
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.memory import VertexAiMemoryBankService
 from google.adk.sessions import VertexAiSessionService
-from google.adk.sessions import InMemorySessionService
+from google.genai import Client
 from google.adk.tools.mcp_tool.mcp_toolset import (
     McpToolset,
     StreamableHTTPConnectionParams,
@@ -79,12 +78,46 @@ def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
         # Any other error means ADC was likely found but token minting failed
         # (e.g., IAM permissions, wrong audience, metadata server unreachable).
         logging.critical(
-            f"An unexpected error occurred fetching OIDC token for audience '{audience}': {e}",
+            f"An unexpected error occurred fetching OIDC token for audience "
+            f"'{audience}': {e}",
             exc_info=True,
         )
 
     # Return an empty dict if any exception occurred
     return {}
+
+
+class PersistentVertexAiMemoryBankService(VertexAiMemoryBankService):
+    """
+    Fixed version of VertexAiMemoryBankService that keeps the httpx client alive.
+
+    The original implementation creates a new Client (and httpx client) for each request,
+    which causes "Cannot send a request, as the client has been closed" errors in
+    deployed Agent Engine environments.
+
+    This subclass maintains a single persistent Client (and thus API client) for the
+    lifetime of the service, preventing premature httpx client closure.
+    """
+
+    def __init__(
+        self, project: str = None, location: str = None, agent_engine_id: str = None
+    ):
+        super().__init__(
+            project=project, location=location, agent_engine_id=agent_engine_id
+        )
+        # Create and cache both the Client and API client once
+        self._persistent_client = None
+        self._persistent_api_client = None
+
+    def _get_api_client(self):
+        """Override to return a persistent API client instead of creating new ones."""
+        if self._persistent_api_client is None:
+            # Keep the Client object alive to prevent httpx client closure
+            self._persistent_client = Client(
+                vertexai=True, project=self._project, location=self._location
+            )
+            self._persistent_api_client = self._persistent_client._api_client
+        return self._persistent_api_client
 
 
 class TokenManager:
@@ -195,7 +228,10 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 "context_spec": {
                     "memory_bank_config": {
                         "generation_config": {
-                            "model": f"projects/{self.project_id}/locations/{self.location}/publishers/google/models/gemini-2.5-flash"
+                            "model": (
+                                f"projects/{self.project_id}/locations/{self.location}/"
+                                "publishers/google/models/gemini-2.5-flash"
+                            )
                         }
                     }
                 }
@@ -213,7 +249,8 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Get agent configuration
             config = self.get_agent_config()
 
-            my_memory_service = VertexAiMemoryBankService(
+            # Use custom memory service that keeps httpx client alive
+            my_memory_service = PersistentVertexAiMemoryBankService(
                 project=os.environ.get("PROJECT_ID"),
                 location=os.environ.get("LOCATION"),
                 agent_engine_id=self.agent_engine_id,
@@ -258,13 +295,21 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 session = callback_context._invocation_context.session
                 memory_service = callback_context._invocation_context.memory_service
 
-                logging.info(f"Saving session {session.id} to memory bank for user_id={session.user_id}")
+                logging.info(
+                    f"Saving session {session.id} to memory bank for "
+                    f"user_id={session.user_id}"
+                )
 
                 try:
                     await memory_service.add_session_to_memory(session)
-                    logging.info(f"Memory generation completed for session {session.id}")
+                    logging.info(
+                        f"Memory generation completed for session {session.id}"
+                    )
                 except Exception as e:
-                    logging.error(f"Memory generation failed for session {session.id}: {e}", exc_info=True)
+                    logging.error(
+                        f"Memory generation failed for session {session.id}: {e}",
+                        exc_info=True,
+                    )
 
             # Create the actual agent
             self.agent = LlmAgent(

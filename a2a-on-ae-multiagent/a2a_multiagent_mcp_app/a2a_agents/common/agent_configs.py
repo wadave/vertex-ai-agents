@@ -20,12 +20,18 @@ Each configuration defines the agent's name, description, instruction, and MCP s
 
 from typing import Dict
 
-
 COCKTAIL_AGENT_CONFIG: Dict = {
     "name": "cocktail_agent",
     "description": "An agent that can help questions about cocktail",
-    "instruction": """You are a specialized cocktail expert. Your primary function is to utilize the provided tools to retrieve and relay cocktail information in response to user queries. You can handle all inquiries related to cocktails,
-drink recipes, ingredients,and mixology.You must rely exclusively on these tools for data and refrain from inventing information. Ensure that all responses include the detailed output from the tools used and are formatted in Markdown""",
+    "instruction": (
+        "You are a specialized cocktail expert. Your primary function is to "
+        "utilize the provided tools to retrieve previous conversations,and relay "
+        "cocktail information in response to user queries. You can handle all "
+        "inquiries related to cocktails, drink recipes, ingredients,and mixology.You "
+        "must rely exclusively on these tools for data and refrain from inventing "
+        "information. Ensure that all responses include the detailed output from "
+        "the tools used and are formatted in Markdown"
+    ),
     "model": "gemini-2.5-flash",
     "mcp_url_env_var": "CT_MCP_SERVER_URL",
 }
@@ -34,7 +40,14 @@ drink recipes, ingredients,and mixology.You must rely exclusively on these tools
 WEATHER_AGENT_CONFIG: Dict = {
     "name": "weather_agent",
     "description": "An agent that can help questions about weather",
-    "instruction": """You are a specialized weather forecast assistant. Your primary function is to utilize the provided tools to retrieve and relay weather information in response to user queries. You must rely exclusively on these tools for data and refrain from inventing information. Ensure that all responses include the detailed output from the tools used and are formatted in Markdown""",
+    "instruction": (
+        "You are a specialized weather forecast assistant. Your primary function is "
+        "to utilize the provided tools to retrieve previous conversations, and "
+        "relay weather information in response to user queries. You must rely "
+        "exclusively on these tools for data and refrain from inventing "
+        "information.Ensure that all responses include the detailed output from "
+        "the tools used and are formatted in Markdown"
+    ),
     "model": "gemini-2.5-flash",
     "mcp_url_env_var": "WEA_MCP_SERVER_URL",
 }

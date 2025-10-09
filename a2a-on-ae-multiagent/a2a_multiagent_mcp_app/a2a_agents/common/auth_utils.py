@@ -54,7 +54,9 @@ class GoogleAuth(httpx.Auth):
         )
         self.auth_request = AuthRequest()
 
-    def auth_flow(self, request: httpx.Request) -> Generator[httpx.Request, None, None]:
+    def auth_flow(
+        self, request: httpx.Request
+    ) -> Generator[httpx.Request, None, None]:
         """Adds the Authorization header to the request.
 
         This method is called by httpx for each request. It ensures that:
