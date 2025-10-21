@@ -4,6 +4,7 @@
 >
 > **⚠️ Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
 
+ > **⚠️ Important**: Please run it in **Cloud Shell** to ensure you have the proper permissions.
 This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
 
 ## Overview
