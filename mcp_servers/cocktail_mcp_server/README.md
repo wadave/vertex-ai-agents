@@ -56,6 +56,9 @@ gcloud run services proxy $SERVICE_NAME --region=$LOCATION
 
 ### 5. Grant Cloudtop Access (Optional)
 
+It's recommended to run in Cloud Shell, if you want to run it in Cloudtop or other VM, make sure you can run the below command.
+You may need to change IAM policy to allow cross domain access.
+
 If you need to grant access to a Cloudtop user, run the following command:
 
 ```bash
