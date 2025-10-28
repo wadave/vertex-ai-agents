@@ -1,0 +1,23 @@
+[project]
+name = "a2a-on-ae-multiagent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "a2a-sdk>=0.3.5",
+    "black>=25.9.0",
+    "click>=8.2.1",
+    "flake8>=7.3.0",
+    "google-adk>=1.14.1",
+    "google-auth-oauthlib>=1.2.2",
+    "google-auth[openid]>=2.40.3",
+    "google-cloud-aiplatform>=1.113.0",
+    "google-genai>=1.36.0",
+    "gradio>=5.46.1",
+    "ipykernel>=6.30.1",
+    "nbqa>=1.9.1",
+    "pip>=25.2",
+]
+
+
